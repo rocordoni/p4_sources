@@ -1,0 +1,12 @@
+table_set_default send_frame _drop
+table_set_default forward _drop
+table_set_default ipv4_lpm _drop
+table_set_default set_heavy_hitter_count_table set_heavy_hitter_count
+table_set_default set_ntp_count_table set_ntp_count
+table_set_default set_ntp_monlist_request_count_table set_ntp_monlist_request_count
+table_set_default set_ntp_monlist_response_count_table set_ntp_monlist_response_count
+table_set_default drop_ntp_table _drop_ntp
+table_set_default get_req_resp_count_table get_req_resp_count
+table_add send_frame rewrite_mac 1 => 00:00:00:00:00:01
+table_add send_frame rewrite_mac 2 => 00:00:00:00:00:02
+table_add send_frame rewrite_mac 3 => 00:00:00:00:00:03
