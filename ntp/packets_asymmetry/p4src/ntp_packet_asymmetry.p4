@@ -235,6 +235,7 @@ table send_frame {
 }
 
 control ingress {
+    // NTP_GET_MONLIST operations and is a valid UDP header.
     if(ntp_mode7.req_code == NTP_GETMONLIST_CODE and valid(udp)) {
         if ( ntp_first.r == NTP_REQUEST ) {
             apply(set_ntp_monlist_request_count_table);
