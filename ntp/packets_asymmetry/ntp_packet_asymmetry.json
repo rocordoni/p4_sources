@@ -567,43 +567,19 @@
                 "ethernet",
                 "ipv4",
                 "udp",
+                "tcp",
                 "ntp_first",
-                "ntp_mode7",
-                "tcp"
+                "ntp_mode7"
             ]
         }
     ],
     "meter_arrays": [],
     "actions": [
         {
-            "name": "set_ntp_monlist_request_count",
+            "name": "set_ntp_count",
             "id": 0,
             "runtime_data": [],
             "primitives": [
-                {
-                    "op": "modify_field_with_hash_based_offset",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "hash_val1"
-                            ]
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x0"
-                        },
-                        {
-                            "type": "calculation",
-                            "value": "ntp_hash"
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x10"
-                        }
-                    ]
-                },
                 {
                     "op": "register_read",
                     "parameters": [
@@ -616,14 +592,11 @@
                         },
                         {
                             "type": "register_array",
-                            "value": "ntp_monlist_request_counter"
+                            "value": "ntp_counter"
                         },
                         {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "hash_val1"
-                            ]
+                            "type": "hexstr",
+                            "value": "0x0"
                         }
                     ]
                 },
@@ -648,14 +621,11 @@
                     "parameters": [
                         {
                             "type": "register_array",
-                            "value": "ntp_monlist_request_counter"
+                            "value": "ntp_counter"
                         },
                         {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "hash_val1"
-                            ]
+                            "type": "hexstr",
+                            "value": "0x0"
                         },
                         {
                             "type": "field",
@@ -669,18 +639,35 @@
             ]
         },
         {
-            "name": "_drop",
+            "name": "rewrite_mac",
             "id": 1,
-            "runtime_data": [],
+            "runtime_data": [
+                {
+                    "name": "smac",
+                    "bitwidth": 48
+                }
+            ],
             "primitives": [
                 {
-                    "op": "drop",
-                    "parameters": []
+                    "op": "modify_field",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "ethernet",
+                                "srcAddr"
+                            ]
+                        },
+                        {
+                            "type": "runtime_data",
+                            "value": 0
+                        }
+                    ]
                 }
             ]
         },
         {
-            "name": "set_ntp_monlist_response_count",
+            "name": "set_ntp_monlist_request_count",
             "id": 2,
             "runtime_data": [],
             "primitives": [
@@ -720,6 +707,99 @@
                         },
                         {
                             "type": "register_array",
+                            "value": "ntp_monlist_request_counter"
+                        },
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "hash_val1"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "op": "add_to_field",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "count_val1"
+                            ]
+                        },
+                        {
+                            "type": "hexstr",
+                            "value": "0x1"
+                        }
+                    ]
+                },
+                {
+                    "op": "register_write",
+                    "parameters": [
+                        {
+                            "type": "register_array",
+                            "value": "ntp_monlist_request_counter"
+                        },
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "hash_val1"
+                            ]
+                        },
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "count_val1"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "set_ntp_monlist_response_count",
+            "id": 3,
+            "runtime_data": [],
+            "primitives": [
+                {
+                    "op": "modify_field_with_hash_based_offset",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "hash_val1"
+                            ]
+                        },
+                        {
+                            "type": "hexstr",
+                            "value": "0x0"
+                        },
+                        {
+                            "type": "calculation",
+                            "value": "ntp_hash"
+                        },
+                        {
+                            "type": "hexstr",
+                            "value": "0x10"
+                        }
+                    ]
+                },
+                {
+                    "op": "register_read",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "count_val1"
+                            ]
+                        },
+                        {
+                            "type": "register_array",
                             "value": "ntp_monlist_response_counter"
                         },
                         {
@@ -773,8 +853,19 @@
             ]
         },
         {
+            "name": "_drop",
+            "id": 4,
+            "runtime_data": [],
+            "primitives": [
+                {
+                    "op": "drop",
+                    "parameters": []
+                }
+            ]
+        },
+        {
             "name": "get_req_resp_count",
-            "id": 3,
+            "id": 5,
             "runtime_data": [],
             "primitives": [
                 {
@@ -843,7 +934,7 @@
         },
         {
             "name": "_drop_ntp",
-            "id": 4,
+            "id": 6,
             "runtime_data": [],
             "primitives": [
                 {
@@ -905,97 +996,6 @@
                 {
                     "op": "drop",
                     "parameters": []
-                }
-            ]
-        },
-        {
-            "name": "set_ntp_count",
-            "id": 5,
-            "runtime_data": [],
-            "primitives": [
-                {
-                    "op": "register_read",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "count_val1"
-                            ]
-                        },
-                        {
-                            "type": "register_array",
-                            "value": "ntp_counter"
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x0"
-                        }
-                    ]
-                },
-                {
-                    "op": "add_to_field",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "count_val1"
-                            ]
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x1"
-                        }
-                    ]
-                },
-                {
-                    "op": "register_write",
-                    "parameters": [
-                        {
-                            "type": "register_array",
-                            "value": "ntp_counter"
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x0"
-                        },
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "count_val1"
-                            ]
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "rewrite_mac",
-            "id": 6,
-            "runtime_data": [
-                {
-                    "name": "smac",
-                    "bitwidth": 48
-                }
-            ],
-            "primitives": [
-                {
-                    "op": "modify_field",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "ethernet",
-                                "srcAddr"
-                            ]
-                        },
-                        {
-                            "type": "runtime_data",
-                            "value": 0
-                        }
-                    ]
                 }
             ]
         }
@@ -1241,92 +1241,8 @@
     ],
     "calculations": [
         {
-            "name": "ipv4_checksum",
-            "id": 0,
-            "input": [
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "version"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "ihl"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "diffserv"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "totalLen"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "identification"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "flags"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "fragOffset"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "ttl"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "protocol"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "srcAddr"
-                    ]
-                },
-                {
-                    "type": "field",
-                    "value": [
-                        "ipv4",
-                        "dstAddr"
-                    ]
-                }
-            ],
-            "algo": "csum16"
-        },
-        {
             "name": "ntp_hash",
-            "id": 1,
+            "id": 0,
             "input": [
                 {
                     "type": "field",
@@ -1367,19 +1283,7 @@
             "algo": "crc16"
         }
     ],
-    "checksums": [
-        {
-            "name": "ipv4.hdrChecksum|ipv4_checksum",
-            "id": 0,
-            "target": [
-                "ipv4",
-                "hdrChecksum"
-            ],
-            "type": "generic",
-            "calculation": "ipv4_checksum",
-            "if_cond": null
-        }
-    ],
+    "checksums": [],
     "learn_lists": [],
     "field_lists": [],
     "counter_arrays": [],
