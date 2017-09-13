@@ -1,23 +1,18 @@
-/* Copyright 2013-present Barefoot Networks, Inc.
+/*
+ * author: Roberto Cordoni
+ * email: rocordoni@gmail.com
  *
- * Licensed under the Apache License, Version 2.0 (the "License");
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- *   http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
+ * P4 NTP mode7 Parser.
  */
+
+#define ETHERTYPE_IPV4 0x0800
+#define IP_PROTOCOLS_TCP 6
+#define IP_PROTOCOLS_UDP 17
+#define NTP_MODE7 7
 
 parser start {
     return parse_ethernet;
 }
-
-#define ETHERTYPE_IPV4 0x0800
 
 header ethernet_t ethernet;
 
@@ -31,10 +26,7 @@ parser parse_ethernet {
 
 header ipv4_t ipv4;
 
-#define IP_PROTOCOLS_TCP 6
-#define IP_PROTOCOLS_UDP 17
-#define NTP_MODE7 7
-
+// Check protocol field to choose next header to parse.
 parser parse_ipv4 {
     extract(ipv4);
     return select(latest.protocol) {
@@ -58,6 +50,10 @@ parser parse_udp {
     return parse_ntp_first;
 }
 
+// I choose to split NTP header in two different headers.
+// As I am interested only in NTP mode7 segments (NTP MONLIST),
+// I first parse untill the 'mode' field. If it's a mode7 message,
+// parse the rest of the NTP header. Otherwise, go to ingress.
 header ntp_first_t ntp_first;
 
 parser parse_ntp_first {
