@@ -1,0 +1,17 @@
+table_set_default forward _drop
+table_set_default ipv4_lpm _drop
+table_set_default egress_port _drop
+table_set_default set_ntp_count_table set_ntp_count
+table_set_default spoofing_attack_table set_spoofing_attack_register
+table_set_default amplification_attack_table set_amplification_attack_register
+table_set_default set_ntp_monlist_request_count_table set_ntp_monlist_request_count
+table_set_default set_ntp_monlist_response_count_table set_ntp_monlist_response_count
+table_add forward set_dmac 10.0.0.1 => 00:00:00:00:00:01
+table_add forward set_dmac 10.0.0.2 => 00:00:00:00:00:02
+table_add forward set_dmac 10.0.0.3 => 00:00:00:00:00:03
+table_add ipv4_lpm set_nhop 10.0.0.1/32 => 10.0.0.1 1
+table_add ipv4_lpm set_nhop 10.0.0.2/32 => 10.0.0.2 2
+table_add ipv4_lpm set_nhop 10.0.0.3/32 => 10.0.0.3 3
+table_add egress_port set_egress_port 10.0.0.1/32 => 1
+table_add egress_port set_egress_port 10.0.0.2/32 => 2
+table_add egress_port set_egress_port 10.0.0.3/32 => 3
