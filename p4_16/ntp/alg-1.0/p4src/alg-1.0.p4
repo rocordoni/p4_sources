@@ -120,8 +120,8 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
-    register<register_type_t>(REGISTER_COUNT) attack;
-    register<counter_register_type_t>(REGISTER_COUNT) ntp_counter;
+    register<register_type_t>(1) attack;
+    register<counter_register_type_t>(1) ntp_counter;
 
     action drop() {
         mark_to_drop();
@@ -206,7 +206,7 @@ control MyIngress(inout headers hdr,
         size = 1;
         default_action = set_ntp_count();
     }
-    
+
     action set_attack_register() {
         attack.write(0, ATTACK);
     }
