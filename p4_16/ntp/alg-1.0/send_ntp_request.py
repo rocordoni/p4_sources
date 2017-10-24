@@ -62,54 +62,75 @@ def send_random_traffic(dst):
     #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" * 4
     NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x24" + "\x00" * 64
     dst_mac = None
+    src_ip = None
     dst_ip = None
+    legitimate_pkts = 0
+    spoofed_pkts = 0
+    total_pkts = 0
+
+    # List used to get a random IP source
+    ips_list = ['10.0.1.1','10.0.1.2','10.0.1.3']
+
+    # Map IP to respective mac
+    # This is needed when trying to send spoofed packet
+    # We must match IP source with MAC source.
+    mac_addresses = { '10.0.1.1' : "00:00:00:00:01:01",
+                      '10.0.1.2' : "00:00:00:00:01:02",
+                      '10.0.1.3' : "00:00:00:00:01:03" }
     # Get name of eth0 interface
     iface_eth0 = ''
     for i in get_if_list():
-        if 'eth0' in i:
+        if 'eth0' in i or 's0' in i:
             iface_eth0 = i
-    src_mac = get_if_hwaddr(iface_eth0)
-    src_mac = src_mac[0]
+    mac_iface_eth0 = get_if_hwaddr(iface_eth0)
+    ip_addr_eth0 = get_ip_address(iface_eth0)
 
-    if len(src_mac) < 1:
+    if len(mac_iface_eth0) < 1:
         print ("No interface for output")
         sys.exit(1)
 
-    src_ip = None
     if dst == 'h1':
-        dst_mac = "00:00:00:00:00:01"
+        dst_mac = "00:00:00:00:01:01"
         dst_ip = "10.0.1.1"
     elif dst == 'h2':
-        dst_mac = "00:00:00:00:00:02"
+        dst_mac = "00:00:00:00:01:02"
         dst_ip = "10.0.1.2"
     elif dst == 'h3':
-        dst_mac = "00:00:00:00:00:03"
+        dst_mac = "00:00:00:00:01:03"
         dst_ip = "10.0.1.3"
     else:
         print ("Invalid host to send to")
         sys.exit(1)
 
-    # Create N src ip
-    N = 1
-    src_ip_list = list()
-    for i in range(0,N):
-        src_ip_list.append(gen_random_ip())
-        src_ip_list = ['10.0.1.1']
-
-    # Loop for sending packages
-    total_pkts = 0
-    for src_ip in src_ip_list:
-        num_packets = 1
+    N = 10
+    for i in range(N):
+        # Choose random source IP
+        random_number = random.randint(0,2)
+        src_ip = ips_list[random_number]
+        # Legitimate packet.
+        # Increment counter and set source mac
+        if src_ip == ip_addr_eth0:
+            legitimate_pkts += 1
+            src_mac = mac_iface_eth0
+        # Spoofed packet
+        # Match source IP with correspondent mac address
+        else:
+            src_mac = mac_addresses[src_ip]
+            spoofed_pkts += 1
         port = random.randint(1024, 65535)
-        for i in range(num_packets):
-            p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
-            p = p/UDP(dport=123,sport=port)/NTP(NTP_MONLIST_REQUEST)
-            print p.show()
-            sendp(p, iface = iface_eth0, loop=0)
-            total_pkts += 1
+        p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
+        p = p/UDP(dport=123,sport=port)/NTP(NTP_MONLIST_REQUEST)
+        print p.show()
+        sendp(p, iface = iface_eth0, loop=0)
+        total_pkts += 1
+
+    print ''
+    print "Sent %s legitimate packets" % legitimate_pkts
+    print "Sent %s spoofed packets" % spoofed_pkts
     print "Sent %s packets in total" % total_pkts
 
 if __name__ == '__main__':
+
     if len(sys.argv) < 2:
         print("Usage: python send.py dst_host_name")
         sys.exit(1)
