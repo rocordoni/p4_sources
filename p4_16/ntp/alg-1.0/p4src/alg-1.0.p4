@@ -32,16 +32,9 @@ typedef bit<16> register_type_t;
 typedef bit<16> counter_register_type_t;
 
 struct metadata {
-    instance_count_t            INSTANCE_COUNT;
     counter_register_type_t     count_val1;
     bit<9>                      mapped_port;
     bit<32> nhop_ipv4;
-}
-
-struct custom_ntp_metadata_t {
-    instance_count_t            INSTANCE_COUNT;
-    counter_register_type_t     count_val1;
-    bit<9>                      egress_port;
 }
 
 struct custom_metadata_t {
