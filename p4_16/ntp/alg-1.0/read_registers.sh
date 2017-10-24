@@ -21,5 +21,7 @@ source /home/rocordoni/Documents/2017-1_TCC/tutorials/env.sh
 
 CLI_PATH=$BMV2_PATH/targets/simple_switch/sswitch_CLI
 echo "displaying registers"
-echo "register_read ntp_counter 0" | $CLI_PATH alg-1.0.json | grep ntp_counter
-echo "register_read attack 0" | $CLI_PATH alg-1.0.json | grep attack
+echo "register_read ntp_counter 0" | $CLI_PATH build/p4src/alg-1.0.p4.json | grep ntp_counter
+echo "register_read spoofed_pkts_reg 0" | $CLI_PATH build/p4src/alg-1.0.p4.json | grep spoofed_pkts_reg
+echo "register_read ingress_port_reg 0" | $CLI_PATH build/p4src/alg-1.0.p4.json | grep ingress_port_reg
+echo "register_read mapped_port_reg 0" | $CLI_PATH build/p4src/alg-1.0.p4.json | grep mapped_port_reg
