@@ -20,6 +20,6 @@ THIS_DIR=$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )
 source /home/rocordoni/Documents/2017-1_TCC/tutorials/env.sh
 
 CLI_PATH=$BMV2_PATH/targets/simple_switch/sswitch_CLI
-
-echo "register_read ntp_counter 0" | $CLI_PATH heavy_hitter.json 22222 | grep ntp_counter
-echo "register_read attack 0" | $CLI_PATH heavy_hitter.json 22222 | grep attack
+echo "displaying registers"
+echo "register_read ntp_counter 0" | $CLI_PATH alg-1.0.json | grep ntp_counter
+echo "register_read attack 0" | $CLI_PATH alg-1.0.json | grep attack
