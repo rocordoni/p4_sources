@@ -17,6 +17,9 @@
 from scapy.all import Ether, IP, sendp, get_if_hwaddr, get_if_list, TCP, Raw, UDP, NTP, fuzz
 import sys
 import random, string
+import socket
+import fcntl
+import struct
 
 def randomword(max_length):
     length = random.randint(1, max_length)
@@ -28,6 +31,14 @@ def set_payload(length):
 def gen_random_ip():
     ip = ".".join(map(str, (random.randint(0, 255) for _ in range(4))))
     return ip
+
+def get_ip_address(ifname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return socket.inet_ntoa(fcntl.ioctl(
+        s.fileno(),
+        0x8915,  # SIOCGIFADDR
+        struct.pack('256s', ifname[:15])
+    )[20:24])
 
 def read_topo():
     nb_hosts = 0
