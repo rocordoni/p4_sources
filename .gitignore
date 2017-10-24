@@ -1,3 +1,4 @@
 *.pcap
 *.json
 p4_16/ntp/alg*/build/*
+*.pyc
