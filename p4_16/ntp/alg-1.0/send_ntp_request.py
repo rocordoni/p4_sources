@@ -52,23 +52,28 @@ def send_random_traffic(dst):
     NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x24" + "\x00" * 64
     dst_mac = None
     dst_ip = None
-    print get_if_list()
-    src_mac = [get_if_hwaddr(i) for i in get_if_list() if 'eth0' in i]
+    # Get name of eth0 interface
+    iface_eth0 = ''
+    for i in get_if_list():
+        if 'eth0' in i:
+            iface_eth0 = i
+    src_mac = get_if_hwaddr(iface_eth0)
+    src_mac = src_mac[0]
+
     if len(src_mac) < 1:
         print ("No interface for output")
         sys.exit(1)
-    src_mac = src_mac[0]
+
     src_ip = None
-    
     if dst == 'h1':
         dst_mac = "00:00:00:00:00:01"
-        dst_ip = "10.0.0.1"
+        dst_ip = "10.0.1.1"
     elif dst == 'h2':
         dst_mac = "00:00:00:00:00:02"
-        dst_ip = "10.0.0.2"
+        dst_ip = "10.0.1.2"
     elif dst == 'h3':
         dst_mac = "00:00:00:00:00:03"
-        dst_ip = "10.0.0.3"
+        dst_ip = "10.0.1.3"
     else:
         print ("Invalid host to send to")
         sys.exit(1)
@@ -78,8 +83,9 @@ def send_random_traffic(dst):
     src_ip_list = list()
     for i in range(0,N):
         src_ip_list.append(gen_random_ip())
-        src_ip_list = ['10.0.0.1']
-    
+        src_ip_list = ['10.0.1.1']
+
+    # Loop for sending packages
     total_pkts = 0
     for src_ip in src_ip_list:
         num_packets = 1
@@ -88,7 +94,7 @@ def send_random_traffic(dst):
             p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
             p = p/UDP(dport=123,sport=port)/NTP(NTP_MONLIST_REQUEST)
             print p.show()
-            sendp(p, iface = "eth0", loop=0)
+            sendp(p, iface = iface_eth0, loop=0)
             total_pkts += 1
     print "Sent %s packets in total" % total_pkts
 
