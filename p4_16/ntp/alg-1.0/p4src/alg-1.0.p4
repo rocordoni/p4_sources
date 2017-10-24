@@ -10,6 +10,11 @@
 #include <v1model.p4>
 #include "includes/headers.p4"
 
+#define ETHERTYPE_IPV4 0x0800
+#define IP_PROTOCOLS_TCP 6
+#define IP_PROTOCOLS_UDP 17
+#define NTP_MODE7 7
+
 #define MONLIST_ATTACK_THRESHOLD 0
 #define NTP_GETMONLIST_CODE 0x2a
 #define NTP_REQUEST 0
@@ -74,16 +79,36 @@ parser MyParser(packet_in packet,
 
     state parse_ipv4 {
         packet.extract(hdr.ipv4);
+        transition select(hdr.ipv4.protocol) {
+            IP_PROTOCOLS_UDP : parse_udp;
+            default: accept;
+        }
+    }
+
+    state parse_udp {
+        packet.extract(hdr.udp);
+        transition parse_ntp_first;
+    }
+
+    state parse_ntp_first {
+        packet.extract(hdr.ntp_first);
+        transition select(hdr.ntp_first.mode) {
+            NTP_MODE7 : parse_ntp_mode7;
+            default: accept;
+        }
+    }
+
+    state parse_ntp_mode7 {
+        packet.extract(hdr.ntp_mode7);
         transition accept;
     }
 
 }
-
 /*************************************************************************
 ************   C H E C K S U M    V E R I F I C A T I O N   *************
 *************************************************************************/
 
-control MyVerifyChecksum(inout headers hdr, inout metadata meta) {   
+control MyVerifyChecksum(inout headers hdr, inout metadata meta) {
     apply {  }
 }
 
