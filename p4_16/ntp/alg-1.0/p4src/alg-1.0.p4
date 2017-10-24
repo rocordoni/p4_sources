@@ -34,7 +34,7 @@ typedef bit<16> counter_register_type_t;
 struct metadata {
     instance_count_t            INSTANCE_COUNT;
     counter_register_type_t     count_val1;
-    bit<9>                      egress_port;
+    bit<9>                      mapped_port;
     bit<32> nhop_ipv4;
 }
 
@@ -120,8 +120,11 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
-    register<register_type_t>(1) attack;
+    register<register_type_t>(1) spoofed_pkts_reg;
     register<counter_register_type_t>(1) ntp_counter;
+    /* Debug registers. Delete it if you wish. */
+    register<egressSpec_t>(1) ingress_port_reg;
+    register<egressSpec_t>(1) mapped_port_reg;
 
     action drop() {
         mark_to_drop();
@@ -154,16 +157,18 @@ control MyIngress(inout headers hdr,
         default_action = NoAction();
     }
 
-    action set_egress_port(bit<9> port) {
-        meta.egress_port = port;
+    action get_mapped_port(bit<9> port) {
+        ingress_port_reg.write(0, standard_metadata.ingress_port);
+        mapped_port_reg.write(0, port);
+        meta.mapped_port = port;
     }
 
-    table egress_port {
+    table mapped_port {
         key = {
-            hdr.ipv4.dstAddr: lpm;
+            hdr.ipv4.srcAddr: lpm;
         }
         actions = {
-            set_egress_port;
+            get_mapped_port;
             drop;
             NoAction;
         }
@@ -207,27 +212,31 @@ control MyIngress(inout headers hdr,
         default_action = set_ntp_count();
     }
 
-    action set_attack_register() {
-        attack.write(0, ATTACK);
+    action set_spoof_register() {
+        counter_register_type_t tmp;
+        spoofed_pkts_reg.read(tmp, 0);
+        tmp = tmp + 1;
+        spoofed_pkts_reg.write(0, tmp);
     }
 
     // Table that sets a register indicating that an attack ocurred
-    table attack_table {
+    table spoof_table {
         actions = {
-            set_attack_register;
+            set_spoof_register;
         }
         size = 1;
-        default_action = set_attack_register();
+        default_action = set_spoof_register();
     }
 
     apply {
-        egress_port.apply();
-        // NTP_GET_MONLIST operations and is a valid UDP header.
+        /* Copy the port from switch_table to meta.egress */
+        mapped_port.apply();
+        /* NTP_GET_MONLIST operations and valid UDP header */
         if(hdr.ntp_mode7.req_code == NTP_GETMONLIST_CODE && hdr.udp.isValid()) {
             if (hdr.ntp_first.r == NTP_REQUEST) {
-                if ( meta.egress_port != standard_metadata.ingress_port ) {
+                if (meta.mapped_port != standard_metadata.ingress_port) {
                     //Spoofing
-                    attack_table.apply();
+                    spoof_table.apply();
                 }
             }
             set_ntp_count_table.apply();
