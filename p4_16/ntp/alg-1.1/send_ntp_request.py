@@ -60,7 +60,7 @@ def read_topo():
 def send_random_traffic(dst):
     NTP_MONLIST_REQUEST = "\x17\x00\x03\x2a" + "\x00" * 4
     #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" * 4
-    NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x24" + "\x00" * 64
+    NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x48" + "\x00" * 72
     dst_mac = None
     src_ip = None
     dst_ip = None
