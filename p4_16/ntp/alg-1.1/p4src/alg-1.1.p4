@@ -42,8 +42,8 @@ struct metadata {
     instance_count_t            hash_val;
     bit<9>                      mapped_port;
     bit<32>                     nhop_ipv4;
-    bit<32>                     request_bytes;
-    bit<32>                     response_bytes;
+    counter_register_type_t     request_bytes;
+    counter_register_type_t     response_bytes;
     bit<32>                     egress_port;
 }
 
