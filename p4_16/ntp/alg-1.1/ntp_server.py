@@ -14,14 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from scapy.all import sniff
+from scapy.all import sniff, get_if_list
 from scapy.all import Ether, IP, TCP, UDP, NTP
 from scapy.all import send, sendp
 
-VALID_IPS = ("10.0.0.1", "10.0.0.2", "10.0.0.3")
+VALID_IPS = ("10.0.1.1", "10.0.1.2", "10.0.1.3")
 totals = {}
-h2_ip = "10.0.0.2"
-def handle_pkt(pkt):
+h2_ip = "10.0.1.2"
+def handle_pkt(pkt, iface):
     NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x64" + "\x00" * 64
     if IP in pkt and UDP in pkt and pkt[IP].src != h2_ip:
         src_mac = pkt[Ether].src
@@ -42,11 +42,18 @@ def handle_pkt(pkt):
         p = Ether(dst=src_mac,src=dst_mac)/IP(dst=pkt[IP].src,src=pkt[IP].dst)
         p = p/UDP(dport=pkt[UDP].sport,sport=123)/NTP(NTP_MONLIST_RESPONSE)
         print p.show()
-        sendp(p, iface = "eth0", loop=0)
+        sendp(p, iface = iface, loop=0)
 
 def main():
-    sniff(iface = "eth0",
-          prn = lambda x: handle_pkt(x))
+    iface_eth0 = ''
+    for i in get_if_list():
+        if 'eth0' in i or 's0' in i:
+            iface_eth0 = i
+    if not iface_eth0:
+        print 'could not find iface_eth0'
+        exit(1)
+    sniff(iface = iface_eth0,
+          prn = lambda x: handle_pkt(x, iface_eth0))
 
 if __name__ == '__main__':
     main()
