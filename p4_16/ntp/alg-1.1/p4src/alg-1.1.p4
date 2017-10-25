@@ -257,6 +257,7 @@ control MyIngress(inout headers hdr,
         request_bytes = request_bytes + NTP_REQUEST_DATA_BYTES;
         // Write it back to the register
         ntp_monlist_request_bytes_counter.write(hash_val, request_bytes);
+        meta.request_bytes = request_bytes;
     }
 
     table set_ntp_monlist_request_count_table {
