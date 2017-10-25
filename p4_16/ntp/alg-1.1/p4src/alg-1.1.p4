@@ -248,7 +248,7 @@ control MyIngress(inout headers hdr,
         // Function used to calculate a hash value and store it in flow_hash
         hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.srcAddr }, INSTANCE_COUNT_HASH);
         // We need to get response bytes in order to calculate the difference between response and request
-        ntp_monlist_response_bytes_counter.read(response_bytes, hash_val);
+        ntp_monlist_response_bytes_counter.read(meta.response_bytes, hash_val);
         // Copy value from register ntp_monlist_request_bytes_counter[hash_val]
         // to custom_ntp_metadata.request_bytes
         ntp_monlist_request_bytes_counter.read(request_bytes, hash_val);
@@ -274,7 +274,7 @@ control MyIngress(inout headers hdr,
         // Function used to calculate a hash value and store it in hash_val
         hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.dstAddr }, INSTANCE_COUNT_HASH);
         // We need to get request bytes in order to calculate the difference between response and request
-        ntp_monlist_request_bytes_counter.read(request_bytes, hash_val);
+        ntp_monlist_request_bytes_counter.read(meta.request_bytes, hash_val);
         // Copy value from register ntp_monlist_response_bytes_counter[hash_val]
         ntp_monlist_response_bytes_counter.read(response_bytes, hash_val);
         // Increment and write it back to register
