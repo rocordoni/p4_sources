@@ -244,20 +244,15 @@ control MyIngress(inout headers hdr,
     // Increment count register of NTP requests
     action set_ntp_monlist_request_count() {
         instance_count_t hash_val;
-        counter_register_type_t response_bytes;
         counter_register_type_t request_bytes;
         // Function used to calculate a hash value and store it in flow_hash
         hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.srcAddr }, INSTANCE_COUNT_HASH);
-        // We need to get response bytes in order to calculate the difference between response and request
-        ntp_monlist_response_bytes_counter.read(meta.response_bytes, hash_val);
         // Copy value from register ntp_monlist_request_bytes_counter[hash_val]
-        // to custom_ntp_metadata.request_bytes
         ntp_monlist_request_bytes_counter.read(request_bytes, hash_val);
         // Increment the value
         request_bytes = request_bytes + NTP_REQUEST_DATA_BYTES;
         // Write it back to the register
         ntp_monlist_request_bytes_counter.write(hash_val, request_bytes);
-        meta.request_bytes = request_bytes;
     }
 
     table set_ntp_monlist_request_count_table {
