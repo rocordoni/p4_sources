@@ -272,7 +272,7 @@ control MyIngress(inout headers hdr,
         counter_register_type_t response_bytes;
         counter_register_type_t request_bytes;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc16, 10w1023, { hdr.ipv4.dstAddr }, INSTANCE_COUNT_HASH);
+        hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.dstAddr }, INSTANCE_COUNT_HASH);
         // We need to get request bytes in order to calculate the difference between response and request
         ntp_monlist_request_bytes_counter.read(request_bytes, hash_val);
         // Copy value from register ntp_monlist_response_bytes_counter[hash_val]
