@@ -290,17 +290,19 @@ control MyIngress(inout headers hdr,
     }
 
     apply {
-        /* Copy the port from switch_table to meta.egress */
+        /* Copy the port from switch_table to meta.mapped_port */
         mapped_port.apply();
         /* NTP_GET_MONLIST operations and valid UDP header */
         if(hdr.ntp_mode7.req_code == NTP_GETMONLIST_CODE && hdr.udp.isValid()) {
             if (hdr.ntp_first.r == NTP_REQUEST) {
+                /* Update request bytes and copy bytes registers to metadata */
                 set_ntp_monlist_request_count_table.apply();
                 if (meta.mapped_port != standard_metadata.ingress_port) {
-                    //Spoofing
+                    /* Spoofing */
                     spoof_table.apply();
                 }
             } else if (hdr.ntp_first.r == NTP_RESPONSE) {
+                /* Update response bytes and copy bytes registers to metadata */
                 set_ntp_monlist_response_count_table.apply();
                 if (meta.response_bytes - meta.request_bytes > BYTES_THRESHOLD) {
                     amplification_attack_table.apply();
