@@ -119,6 +119,7 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
+    register<instance_count_t>(1) hash_reg;
     register<register_type_t>(1) spoofed_pkts_reg;
     register<egressSpec_t>(1) mapped_port_reg;
     register<counter_register_type_t>(1) ntp_counter;
@@ -273,6 +274,7 @@ control MyIngress(inout headers hdr,
         counter_register_type_t request_bytes;
         // Function used to calculate a hash value and store it in hash_val
         hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.dstAddr }, INSTANCE_COUNT_HASH);
+        hash_reg.write(0, hash_val);
         // We need to get request bytes in order to calculate the difference between response and request
         ntp_monlist_request_bytes_counter.read(meta.request_bytes, hash_val);
         // Copy value from register ntp_monlist_response_bytes_counter[hash_val]
@@ -280,6 +282,7 @@ control MyIngress(inout headers hdr,
         // Increment and write it back to register
         response_bytes = response_bytes + (bit<16>)(hdr.ntp_mode7.n_data_items * hdr.ntp_mode7.size_data_item);
         ntp_monlist_response_bytes_counter.write(hash_val, response_bytes);
+        meta.response_bytes = response_bytes;
     }
 
     table set_ntp_monlist_response_count_table {
