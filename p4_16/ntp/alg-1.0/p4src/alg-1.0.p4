@@ -192,9 +192,8 @@ control MyIngress(inout headers hdr,
     action set_ntp_count() {
         counter_register_type_t tmp;
         ntp_counter.read(tmp, 0);
-        meta.count_val1 = tmp;
-        meta.count_val1 = meta.count_val1 + 1;
-        ntp_counter.write(0, meta.count_val1);
+        tmp = tmp + 1;
+        ntp_counter.write(0, tmp);
     }
 
     table set_ntp_count_table {
