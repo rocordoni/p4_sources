@@ -22,7 +22,11 @@ VALID_IPS = ("10.0.1.1", "10.0.1.2", "10.0.1.3")
 totals = {}
 h2_ip = "10.0.1.2"
 def handle_pkt(pkt, iface):
-    NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x64" + "\x00" * 64
+    #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" * 4
+    #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x24" + "\x00" * 64
+    NTP_ITEMS = "\x02"
+    NTP_ITEMS_INT = 2
+    NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" + NTP_ITEMS + "\x00\x48" + "\x00" * 72 * NTP_ITEMS_INT
     if IP in pkt and UDP in pkt and pkt[IP].src != h2_ip:
         src_mac = pkt[Ether].src
         dst_mac = pkt[Ether].dst
