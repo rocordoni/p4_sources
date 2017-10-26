@@ -307,7 +307,9 @@ control ingress {
         }
         if ( ntp_first.r == NTP_RESPONSE ) {
             apply(set_ntp_monlist_response_count_table);
+            /* Put last timestamp in metadata.response_ts */
             apply(get_response_TS_table);
+            /* Set timestamp for current TS */
             apply(set_response_TS_table);
             // If new_timestamp - old_timestamp is lower than threshold: check for bytes 
             if ( intrinsic_metadata.ingress_global_timestamp - custom_ntp_metadata.response_ts < TS_THRESHOLD ) {
