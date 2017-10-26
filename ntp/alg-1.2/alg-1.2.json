@@ -639,8 +639,124 @@
             ]
         },
         {
-            "name": "set_ntp_count",
+            "name": "set_ntp_monlist_request_count",
             "id": 1,
+            "runtime_data": [],
+            "primitives": [
+                {
+                    "op": "modify_field_with_hash_based_offset",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "hash_val"
+                            ]
+                        },
+                        {
+                            "type": "hexstr",
+                            "value": "0x0"
+                        },
+                        {
+                            "type": "calculation",
+                            "value": "ntp_hash_request"
+                        },
+                        {
+                            "type": "hexstr",
+                            "value": "0x8"
+                        }
+                    ]
+                },
+                {
+                    "op": "register_read",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "response_bytes"
+                            ]
+                        },
+                        {
+                            "type": "register_array",
+                            "value": "ntp_monlist_response_bytes_counter"
+                        },
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "hash_val"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "op": "register_read",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "request_bytes"
+                            ]
+                        },
+                        {
+                            "type": "register_array",
+                            "value": "ntp_monlist_request_bytes_counter"
+                        },
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "hash_val"
+                            ]
+                        }
+                    ]
+                },
+                {
+                    "op": "add_to_field",
+                    "parameters": [
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "request_bytes"
+                            ]
+                        },
+                        {
+                            "type": "hexstr",
+                            "value": "0x48"
+                        }
+                    ]
+                },
+                {
+                    "op": "register_write",
+                    "parameters": [
+                        {
+                            "type": "register_array",
+                            "value": "ntp_monlist_request_bytes_counter"
+                        },
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "hash_val"
+                            ]
+                        },
+                        {
+                            "type": "field",
+                            "value": [
+                                "custom_ntp_metadata",
+                                "request_bytes"
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "set_ntp_count",
+            "id": 2,
             "runtime_data": [],
             "primitives": [
                 {
@@ -703,7 +819,7 @@
         },
         {
             "name": "get_response_TS",
-            "id": 2,
+            "id": 3,
             "runtime_data": [],
             "primitives": [
                 {
@@ -757,7 +873,7 @@
         },
         {
             "name": "set_response_TS",
-            "id": 3,
+            "id": 4,
             "runtime_data": [],
             "primitives": [
                 {
@@ -811,7 +927,7 @@
         },
         {
             "name": "set_amplification_attack_register",
-            "id": 4,
+            "id": 5,
             "runtime_data": [],
             "primitives": [
                 {
@@ -871,7 +987,7 @@
         },
         {
             "name": "set_ntp_monlist_response_count",
-            "id": 5,
+            "id": 6,
             "runtime_data": [],
             "primitives": [
                 {
@@ -1006,7 +1122,7 @@
         },
         {
             "name": "set_egress_port",
-            "id": 6,
+            "id": 7,
             "runtime_data": [
                 {
                     "name": "port",
@@ -1027,122 +1143,6 @@
                         {
                             "type": "runtime_data",
                             "value": 0
-                        }
-                    ]
-                }
-            ]
-        },
-        {
-            "name": "set_ntp_monlist_request_count",
-            "id": 7,
-            "runtime_data": [],
-            "primitives": [
-                {
-                    "op": "modify_field_with_hash_based_offset",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "hash_val"
-                            ]
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x0"
-                        },
-                        {
-                            "type": "calculation",
-                            "value": "ntp_hash_request"
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x8"
-                        }
-                    ]
-                },
-                {
-                    "op": "register_read",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "response_bytes"
-                            ]
-                        },
-                        {
-                            "type": "register_array",
-                            "value": "ntp_monlist_response_bytes_counter"
-                        },
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "hash_val"
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "op": "register_read",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "request_bytes"
-                            ]
-                        },
-                        {
-                            "type": "register_array",
-                            "value": "ntp_monlist_request_bytes_counter"
-                        },
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "hash_val"
-                            ]
-                        }
-                    ]
-                },
-                {
-                    "op": "add_to_field",
-                    "parameters": [
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "request_bytes"
-                            ]
-                        },
-                        {
-                            "type": "hexstr",
-                            "value": "0x48"
-                        }
-                    ]
-                },
-                {
-                    "op": "register_write",
-                    "parameters": [
-                        {
-                            "type": "register_array",
-                            "value": "ntp_monlist_request_bytes_counter"
-                        },
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "hash_val"
-                            ]
-                        },
-                        {
-                            "type": "field",
-                            "value": [
-                                "custom_ntp_metadata",
-                                "request_bytes"
-                            ]
                         }
                     ]
                 }
