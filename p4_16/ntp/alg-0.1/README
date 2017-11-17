@@ -1,16 +1,22 @@
 
-ALG 1.1
+ALG 0.1
 
-Esse algoritmo aborda o problema no switch mais próximo do servidor NTP.
+Esse algoritmo aborda o problema no switch mais próximo da vítima.
 
 
 
-Se houver uma resposta cuja porta de egresso é diferente da porta de
-ingresso para sua correspondente requisição: ATAQUE/Spoofing
+Armazena número de requisições e respostas para diferentes IPs. A detecção ocorre caso a 
+diferença entre o número de respostas e requisições seja maior que um certo THRESHOLD.
 
-Além disso, caso as portas de entrada/saida estejam corretas, o 
-algoritmo mede a diferença entre bytes de requisição e respostas.
-Dessa forma, se o total de bytes enviados por respostas for significa-
-tivamente maior que o total de bytes enviados por requisições, ele trata
-como um ataque.
-   
+
+CENARIO DE TESTE:
+
+    h1 ---- s1 ---- h2
+    
+    
+    h1: vai enviar diversas requisições para um número pre definido de "servidores NTP".
+        Essas requisições serão bem espaçadas no tempo.
+        
+    
+    h2: vai enviar diversas respostas, usando srcIP com o endereço de um desses "servidores"
+        Essas respostas não serão tão espaçadas do tempo.
