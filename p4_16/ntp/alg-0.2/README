@@ -1,12 +1,13 @@
 
-ALG 0.1
+ALG 0.2
 
 Esse algoritmo aborda o problema no switch mais próximo da vítima.
 
 
 
-Armazena número de requisições e respostas para diferentes IPs. A detecção ocorre caso a 
-diferença entre o número de respostas e requisições seja maior que um certo THRESHOLD.
+Esse algoritmo se diferencia do 0.1 pelo fato de possuir apenas uma tabela onde armazena
+requisiçoes E respostas. Ou seja, cada vez que recebe uma requisição, incrementa o contador
+de um indice. Quando recebe uma resposta, decrementa o contador daquele indice.
 
 
 CENARIO DE TESTE:
@@ -14,9 +15,7 @@ CENARIO DE TESTE:
     h1 ---- s1 ---- h2
     
     
-    h1: vai enviar diversas requisições para um número pre definido de "servidores NTP".
-        Essas requisições serão bem espaçadas no tempo.
+    h1: envia diversas requisições.
         
     
-    h2: vai enviar diversas respostas, usando srcIP com o endereço de um desses "servidores"
-        Essas respostas não serão tão espaçadas do tempo.
+    h2: envia diversas respostas.
