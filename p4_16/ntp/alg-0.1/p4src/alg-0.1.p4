@@ -3,7 +3,7 @@
  * author: Roberto Cordoni
  * email: rocordoni@gmail.com
  *
- * P4 Control program for algorithm 1.1.
+ * P4 Control program for algorithm 0.1.
  */
 
 #include <core.p4>

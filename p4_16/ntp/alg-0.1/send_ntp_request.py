@@ -1,21 +1,12 @@
 #!/usr/bin/python
 
-# Copyright 2013-present Barefoot Networks, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+"""
 
+Envia requisicoes NTP MONLIST para diversos servidores
+"""
 from scapy.all import Ether, IP, sendp, get_if_hwaddr, get_if_list, TCP, Raw, UDP, NTP, fuzz
 import sys
+import time
 import random, string
 import socket
 import fcntl
@@ -57,9 +48,8 @@ def read_topo():
             links.append( (a, b) )
     return int(nb_hosts), int(nb_switches), links
 
-def send_random_traffic(dst):
+def send_random_traffic(num_of_messages):
     NTP_MONLIST_REQUEST = "\x17\x00\x03\x2a" + "\x00" * 4
-    #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x48" + "\x00" * 72
     dst_mac = None
     src_ip = None
     dst_ip = None
@@ -67,16 +57,14 @@ def send_random_traffic(dst):
     spoofed_pkts = 0
     total_pkts = 0
 
-    # List used to get a random IP source
-    #ips_list = ['10.0.1.1','10.0.1.2','10.0.1.3']
-    ips_list = ['10.0.1.1', '10.0.1.3']
+    # h1 info
+    src_ip = '10.0.1.1'
+    src_mac = '00:00:00:00:01:01'
 
-    # Map IP to respective mac
-    # This is needed when trying to send spoofed packet
-    # We must match IP source with MAC source.
-    mac_addresses = { '10.0.1.1' : "00:00:00:00:01:01",
-                      '10.0.1.2' : "00:00:00:00:01:02",
-                      '10.0.1.3' : "00:00:00:00:01:03" }
+    # Dest info
+    dst_ip = '10.0.1.3'
+    dst_mac = '00:00:00:00:01:99'
+
     # Get name of eth0 interface
     iface_eth0 = ''
     for i in get_if_list():
@@ -89,28 +77,9 @@ def send_random_traffic(dst):
         print ("No interface for output")
         sys.exit(1)
 
-    try:
-        dst_mac = "00:00:00:00:01:" + dst.split('h')[1]
-        dst_ip = "10.0.1." + dst.split('h')[1]
-    except:
-        print ("Invalid host to send to")
-        sys.exit(1)
-
-    N = 10
+    # Send request and sleep for some time
+    N = int(num_of_messages)
     for i in range(N):
-        # Choose random source IP
-        random_number = random.randint(0,1)
-        src_ip = ips_list[random_number]
-        # Legitimate packet.
-        # Increment counter and set source mac
-        if src_ip == ip_addr_eth0:
-            legitimate_pkts += 1
-            src_mac = mac_iface_eth0
-        # Spoofed packet
-        # Match source IP with correspondent mac address
-        else:
-            src_mac = mac_addresses[src_ip]
-            spoofed_pkts += 1
         port = random.randint(1024, 65535)
         p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
         p = p/UDP(dport=123,sport=port)/NTP(NTP_MONLIST_REQUEST)
@@ -119,15 +88,13 @@ def send_random_traffic(dst):
         total_pkts += 1
 
     print ''
-    print "Sent %s legitimate packets" % legitimate_pkts
-    print "Sent %s spoofed packets" % spoofed_pkts
     print "Sent %s packets in total" % total_pkts
 
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        print("Usage: python send.py dst_host_name")
+        print("Usage: python send.py number_of_messages")
         sys.exit(1)
     else:
-        dst_name = sys.argv[1]
-        send_random_traffic(dst_name)
+        num_of_messages = sys.argv[1]
+        send_random_traffic(num_of_messages)

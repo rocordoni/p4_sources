@@ -1,21 +1,12 @@
 #!/usr/bin/python
 
-# Copyright 2013-present Barefoot Networks, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
+"""
+Envia respostas NTP MONLIST para host. Nao importa os camps de origem pq o switch
+analisa somente os dados da vitima.
+"""
 from scapy.all import Ether, IP, sendp, get_if_hwaddr, get_if_list, TCP, Raw, UDP, NTP, fuzz
 import sys
+import time
 import random, string
 import socket
 import fcntl
@@ -57,15 +48,24 @@ def read_topo():
             links.append( (a, b) )
     return int(nb_hosts), int(nb_switches), links
 
-def send_random_traffic(num_of_messages, dst):
-    #NTP_MONLIST_REQUEST = "\x17\x00\x03\x2a" + "\x00" * 4
-    NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x48" + "\x00" * 72
+def send_random_traffic(host, num_of_messages):
+    NTP_ITEMS = "\x02"
+    NTP_ITEMS_INT = 2
+    NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" + NTP_ITEMS + "\x00\x48" + "\x00" * 72 * NTP_ITEMS_INT
     dst_mac = None
     src_ip = None
     dst_ip = None
     legitimate_pkts = 0
     spoofed_pkts = 0
     total_pkts = 0
+
+    # host info --  can be anything
+    src_ip = '10.0.1.99'
+    src_mac = '00:00:00:00:01:99'
+
+    # Dest info
+    dst_ip = '10.0.1.' + host.split('h')[1]
+    dst_mac = '00:00:00:00:01:0' + host.split('h')[1]
 
     # Get name of eth0 interface
     iface_eth0 = ''
@@ -78,18 +78,10 @@ def send_random_traffic(num_of_messages, dst):
     if len(mac_iface_eth0) < 1:
         print ("No interface for output")
         sys.exit(1)
-    
-    try:
-        dst_mac = "00:00:00:00:01:" + dst.split('h')[1]
-        dst_ip = "10.0.1." + dst.split('h')[1]
-    except:
-        print ("Invalid host to send to")
-        sys.exit(1)
 
+    # Send request and sleep for some time
     N = int(num_of_messages)
     for i in range(N):
-        src_ip = ip_addr_eth0
-        src_mac = mac_iface_eth0
         port = random.randint(1024, 65535)
         p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
         p = p/UDP(dport=123,sport=port)/NTP(NTP_MONLIST_RESPONSE)
@@ -103,9 +95,9 @@ def send_random_traffic(num_of_messages, dst):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        print("Usage: python send.py number_of_messages dst_host_name")
+        print("Usage: python send.py host number_of_messages")
         sys.exit(1)
     else:
-        num_of_messages = sys.argv[1]
-        dst_name = sys.argv[2]
-        send_random_traffic(num_of_messages,dst_name)
+        host = sys.argv[1]
+        num_of_messages = sys.argv[2]
+        send_random_traffic(host, num_of_messages)
