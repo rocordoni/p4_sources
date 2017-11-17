@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
 """
-Envia respostas NTP MONLIST para host com srcIP falsificados, 
-para dar ideia de que essas respostas estao vindo de servidores.
+Envia respostas NTP MONLIST para host. Nao importa os camps de origem pq o switch
+analisa somente os dados da vitima.
 """
 from scapy.all import Ether, IP, sendp, get_if_hwaddr, get_if_list, TCP, Raw, UDP, NTP, fuzz
 import sys
