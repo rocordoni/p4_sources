@@ -1,0 +1,22 @@
+
+ALG 0.1
+
+Esse algoritmo aborda o problema no switch mais próximo da vítima.
+
+
+
+Armazena número de requisições e respostas para diferentes IPs. A detecção ocorre caso a 
+diferença entre o número de respostas e requisições seja maior que um certo THRESHOLD.
+
+
+CENARIO DE TESTE:
+
+    h1 ---- s1 ---- h2
+    
+    
+    h1: vai enviar diversas requisições para um número pre definido de "servidores NTP".
+        Essas requisições serão bem espaçadas no tempo.
+        
+    
+    h2: vai enviar diversas respostas, usando srcIP com o endereço de um desses "servidores"
+        Essas respostas não serão tão espaçadas do tempo.
