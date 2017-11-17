@@ -31,9 +31,9 @@ const   bit<16> TYPE_IPV4 = 0x800;
 
 /*** NAO ESQUECER DE MUDAR OS DOIS INSTACE_COUNT ****/
 #define INSTANCE_COUNT 16
-#define INSTANCE_COUNT_HASH 10w16
+#define MIN_HASH 5w0
+#define MAX_HASH 5w16
 typedef bit<32>  instance_count_t;
-
 typedef bit<9>  egressSpec_t;
 typedef bit<16> register_type_t;
 typedef bit<16> counter_register_type_t;
@@ -250,7 +250,7 @@ control MyIngress(inout headers hdr,
         instance_count_t hash_val;
         counter_register_type_t request_bytes;
         // Function used to calculate a hash value and store it in flow_hash
-        hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.srcAddr }, INSTANCE_COUNT_HASH);
+        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.srcAddr }, MAX_HASH);
         // Copy value from register ntp_monlist_request_bytes_counter[hash_val]
         ntp_monlist_request_bytes_counter.read(request_bytes, hash_val);
         // Increment the value
@@ -273,7 +273,7 @@ control MyIngress(inout headers hdr,
         counter_register_type_t response_bytes;
         counter_register_type_t request_bytes;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.dstAddr }, INSTANCE_COUNT_HASH);
+        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         hash_reg.write(0, hash_val);
         // We need to get request bytes in order to calculate the difference between response and request
         ntp_monlist_request_bytes_counter.read(meta.request_bytes, hash_val);
@@ -298,7 +298,7 @@ control MyIngress(inout headers hdr,
         instance_count_t hash_val;
         timestamp_register_type_t old_ts;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.dstAddr }, INSTANCE_COUNT_HASH);
+        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Get old timestamp
         response_ts.read(meta.old_ts, hash_val);
     }
@@ -316,7 +316,7 @@ control MyIngress(inout headers hdr,
         instance_count_t hash_val;
         timestamp_register_type_t old_ts;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc16, 10w0, { hdr.ipv4.dstAddr }, INSTANCE_COUNT_HASH);
+        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Update time stamp
         response_ts.write(hash_val, standard_metadata.ingress_global_timestamp);
     }
