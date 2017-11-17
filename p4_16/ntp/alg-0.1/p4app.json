@@ -1,0 +1,28 @@
+{
+    "program": "p4src/alg-0.1.p4",
+    "language": "p4-16",
+    "targets": {
+      "multiswitch": {
+          "auto-control-plane": true,
+          "cli": true,
+          "pcap_dump": true,
+          "bmv2_log": true,
+          "links": [["h1", "s1"],["h2", "s1"],["h3", "s1"],["h4", "s1"]],
+          "hosts": {
+            "h1": {
+            },
+            "h2": {
+            },
+            "h3": {
+            },
+            "h4": {
+            }
+          },
+          "switches": {
+              "s1": {
+                  "entries": "s1-commands.txt"
+              }
+          }
+	    }
+    }
+}
