@@ -261,7 +261,7 @@ control MyIngress(inout headers hdr,
                 // copy req and resp counts to metadata, and
                 // check if the difference between them is above threshold
                 decrement_message_count_table.apply();
-                if (meta.message_count > PACKETS_THRESHOLD) {
+                if (meta.message_count < PACKETS_THRESHOLD) {
                     // attack!
                     amplification_attack_table.apply();
                 }
