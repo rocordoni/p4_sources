@@ -23,7 +23,7 @@
 #define REGISTER_COUNT 16
 #define REGISTER_WIDTH 16
 #define BYTES_THRESHOLD 100
-#define TS_THRESHOLD 1000000   //nano seconds = 10^-9
+#define TS_THRESHOLD 1000000   //micro seconds = 10^-6
 
 
 const   bit<16> TYPE_IPV4 = 0x800;
@@ -40,13 +40,10 @@ typedef bit<16> counter_register_type_t;
 typedef bit<48> timestamp_register_type_t;
 
 struct metadata {
-    counter_register_type_t     count_val1;
-    instance_count_t            hash_val;
-    bit<9>                      mapped_port;
     bit<32>                     nhop_ipv4;
+    instance_count_t            hash_val;
     counter_register_type_t     request_bytes;
     counter_register_type_t     response_bytes;
-    bit<32>                     egress_port;
     timestamp_register_type_t   old_ts;
 }
 
@@ -122,9 +119,6 @@ control MyIngress(inout headers hdr,
                   inout metadata meta,
                   inout standard_metadata_t standard_metadata) {
 
-    register<instance_count_t>(1) hash_reg;
-    register<register_type_t>(1) spoofed_pkts_reg;
-    register<egressSpec_t>(1) mapped_port_reg;
     register<counter_register_type_t>(1) ntp_counter;
     register<counter_register_type_t>(1) amplification_attack;
     register<timestamp_register_type_t>(1) old_ts_reg;
@@ -158,24 +152,6 @@ control MyIngress(inout headers hdr,
         }
         actions = {
             ipv4_forward;
-            drop;
-            NoAction;
-        }
-        size = 1024;
-        default_action = NoAction();
-    }
-
-    action get_mapped_port(bit<9> port) {
-        mapped_port_reg.write(0, port);
-        meta.mapped_port = port;
-    }
-
-    table mapped_port {
-        key = {
-            hdr.ipv4.srcAddr: lpm;
-        }
-        actions = {
-            get_mapped_port;
             drop;
             NoAction;
         }
@@ -219,22 +195,6 @@ control MyIngress(inout headers hdr,
         default_action = set_ntp_count();
     }
 
-    action set_spoof_register() {
-        counter_register_type_t tmp;
-        spoofed_pkts_reg.read(tmp, 0);
-        tmp = tmp + 1;
-        spoofed_pkts_reg.write(0, tmp);
-    }
-
-    // Table that sets a register indicating that an attack ocurred
-    table spoof_table {
-        actions = {
-            set_spoof_register;
-        }
-        size = 1;
-        default_action = set_spoof_register();
-    }
-
     action set_amplification_attack_register() {
         amplification_attack.write(0, ATTACK);
     }
@@ -250,16 +210,14 @@ control MyIngress(inout headers hdr,
 
     // Increment count register of NTP requests
     action set_ntp_monlist_request_count() {
-        instance_count_t hash_val;
-        counter_register_type_t request_bytes;
-        // Function used to calculate a hash value and store it in flow_hash
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.srcAddr }, MAX_HASH);
+        // Function used to calculate a hash value and store it in hash_val
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.srcAddr }, MAX_HASH);
         // Copy value from register ntp_monlist_request_bytes_counter[hash_val]
-        ntp_monlist_request_bytes_counter.read(request_bytes, hash_val);
+        ntp_monlist_request_bytes_counter.read(meta.request_bytes, meta.hash_val);
         // Increment the value
-        request_bytes = request_bytes + NTP_REQUEST_DATA_BYTES;
+        meta.request_bytes = meta.request_bytes + NTP_REQUEST_DATA_BYTES;
         // Write it back to the register
-        ntp_monlist_request_bytes_counter.write(hash_val, request_bytes);
+        ntp_monlist_request_bytes_counter.write(meta.hash_val, meta.request_bytes);
     }
 
     table set_ntp_monlist_request_count_table {
@@ -272,20 +230,15 @@ control MyIngress(inout headers hdr,
 
     // Increment count register of NTP responses
     action set_ntp_monlist_response_count() {
-        instance_count_t hash_val;
-        counter_register_type_t response_bytes;
-        counter_register_type_t request_bytes;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
-        hash_reg.write(0, hash_val);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // We need to get request bytes in order to calculate the difference between response and request
-        ntp_monlist_request_bytes_counter.read(meta.request_bytes, hash_val);
+        ntp_monlist_request_bytes_counter.read(meta.request_bytes, meta.hash_val);
         // Copy value from register ntp_monlist_response_bytes_counter[hash_val]
-        ntp_monlist_response_bytes_counter.read(response_bytes, hash_val);
+        ntp_monlist_response_bytes_counter.read(meta.response_bytes, meta.hash_val);
         // Increment and write it back to register
-        response_bytes = response_bytes + (bit<16>)(hdr.ntp_mode7.n_data_items * hdr.ntp_mode7.size_data_item);
-        ntp_monlist_response_bytes_counter.write(hash_val, response_bytes);
-        meta.response_bytes = response_bytes;
+        meta.response_bytes = meta.response_bytes + (bit<16>)(hdr.ntp_mode7.n_data_items * hdr.ntp_mode7.size_data_item);
+        ntp_monlist_response_bytes_counter.write(meta.hash_val, meta.response_bytes);
     }
 
     table set_ntp_monlist_response_count_table {
@@ -298,12 +251,10 @@ control MyIngress(inout headers hdr,
 
     // Copy response timestamp to custom ntp metadata
     action get_response_TS() {
-        instance_count_t hash_val;
-        timestamp_register_type_t old_ts;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Get old timestamp
-        response_ts.read(meta.old_ts, hash_val);
+        response_ts.read(meta.old_ts, meta.hash_val);
         old_ts_reg.write(0,meta.old_ts);
     }
 
@@ -317,15 +268,13 @@ control MyIngress(inout headers hdr,
 
     // Set response timestamp with the new value
     action set_response_TS() {
-        instance_count_t hash_val;
-        timestamp_register_type_t old_ts;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Update time stamp
-        response_ts.read(old_ts, hash_val); // debug
-        response_ts.write(hash_val, standard_metadata.ingress_global_timestamp);
+        response_ts.read(meta.old_ts, meta.hash_val); // debug
+        response_ts.write(meta.hash_val, standard_metadata.ingress_global_timestamp);
         new_ts_reg.write(0, standard_metadata.ingress_global_timestamp); // debug
-        diff_ts_reg.write(0, standard_metadata.ingress_global_timestamp - old_ts); //debug
+        diff_ts_reg.write(0, standard_metadata.ingress_global_timestamp - meta.old_ts); //debug
     }
 
     table set_response_TS_table {
@@ -338,11 +287,10 @@ control MyIngress(inout headers hdr,
 
     // Reset timestamp and bytes
     action reset_bytes() {
-        instance_count_t hash_val;
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Reset values
-        ntp_monlist_request_bytes_counter.write(hash_val, 0);
-        ntp_monlist_response_bytes_counter.write(hash_val, 0);
+        ntp_monlist_request_bytes_counter.write(meta.hash_val, 0);
+        ntp_monlist_response_bytes_counter.write(meta.hash_val, 0);
     }
 
     table reset_bytes_table {
@@ -354,17 +302,11 @@ control MyIngress(inout headers hdr,
     }
 
     apply {
-        /* Copy the port from switch_table to meta.mapped_port */
-        mapped_port.apply();
         /* NTP_GET_MONLIST operations and valid UDP header */
         if(hdr.ntp_mode7.req_code == NTP_GETMONLIST_CODE && hdr.udp.isValid()) {
             if (hdr.ntp_first.r == NTP_REQUEST) {
                 /* Update request bytes and copy bytes registers to metadata */
                 set_ntp_monlist_request_count_table.apply();
-                if (meta.mapped_port != standard_metadata.ingress_port) {
-                    /* Spoofing */
-                    spoof_table.apply();
-                }
             } else if (hdr.ntp_first.r == NTP_RESPONSE) {
                 /* Update response bytes and copy bytes registers to metadata */
                 set_ntp_monlist_response_count_table.apply();
