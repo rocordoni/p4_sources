@@ -24,7 +24,7 @@
 #define REGISTER_WIDTH 16
 #define BYTES_THRESHOLD 100
 #define PACKETS_THRESHOLD 10
-#define TS_THRESHOLD 1000000   //nano seconds = 10^-9
+#define TS_THRESHOLD 10000000   //micro seconds = 10^-6
 
 
 const   bit<16> TYPE_IPV4 = 0x800;
@@ -42,12 +42,9 @@ typedef int<16> counter_register_type_t;
 typedef bit<48> timestamp_register_type_t;
 
 struct metadata {
-    counter_register_type_t     count_val1;
-    instance_count_t            hash_val;
-    bit<9>                      mapped_port;
     bit<32>                     nhop_ipv4;
+    instance_count_t            hash_val;
     counter_register_type_t     message_count;
-    bit<32>                     egress_port;
     timestamp_register_type_t   old_ts;
     timestamp_register_type_t   curr_ts;
 }
@@ -211,16 +208,14 @@ control MyIngress(inout headers hdr,
 
     // Increment count register of NTP requests
     action increment_message_count() {
-        instance_count_t hash_val;
-        counter_register_type_t message_count;
         // Function used to calculate a hash value and store it in flow_hash
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.srcAddr }, MAX_HASH);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.srcAddr }, MAX_HASH);
         // Copy value from register ntp_monlist_request_bytes_counter[hash_val]
-        message_counter.read(message_count, hash_val);
+        message_counter.read(meta.message_count, meta.hash_val);
         // Increment the value
-        message_count = message_count + 1;
+        meta.message_count = meta.message_count + 1;
         // Write it back to the register
-        message_counter.write(hash_val, message_count);
+        message_counter.write(meta.hash_val, meta.message_count);
     }
 
     table increment_message_count_table {
@@ -233,13 +228,12 @@ control MyIngress(inout headers hdr,
 
     // Increment count register of NTP response
     action decrement_message_count() {
-        instance_count_t hash_val;
         // Function used to calculate a hash value and store it in flow_hash
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Copy value from response register, increment the value and write back.
-        message_counter.read(meta.message_count, hash_val);
+        message_counter.read(meta.message_count, meta.hash_val);
         meta.message_count = meta.message_count - 1;
-        message_counter.write(hash_val, meta.message_count);
+        message_counter.write(meta.hash_val, meta.message_count);
     }
 
     table decrement_message_count_table {
@@ -252,13 +246,12 @@ control MyIngress(inout headers hdr,
 
     // Set response timestamp with the new value
     action get_set_response_TS() {
-        instance_count_t hash_val;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Get and Update time stamp
         meta.curr_ts = standard_metadata.ingress_global_timestamp;
-        response_ts.read(meta.old_ts, hash_val);
-        response_ts.write(hash_val, meta.curr_ts);
+        response_ts.read(meta.old_ts, meta.hash_val);
+        response_ts.write(meta.hash_val, meta.curr_ts);
     }
 
     table get_set_response_TS_table {
@@ -273,8 +266,8 @@ control MyIngress(inout headers hdr,
     action reset_counters() {
         instance_count_t hash_val;
         // Function used to calculate a hash value and store it in hash_val
-        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
-        message_counter.write(hash_val, 0);
+        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        message_counter.write(meta.hash_val, 0);
     }
 
     table reset_counters_table {
