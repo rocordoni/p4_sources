@@ -264,7 +264,6 @@ control MyIngress(inout headers hdr,
 
     // Reset counters
     action reset_counters() {
-        instance_count_t hash_val;
         // Function used to calculate a hash value and store it in hash_val
         hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         message_counter.write(meta.hash_val, 0);
