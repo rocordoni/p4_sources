@@ -23,7 +23,7 @@
 #define REGISTER_COUNT 16
 #define REGISTER_WIDTH 16
 #define BYTES_THRESHOLD 100
-#define TS_THRESHOLD 10000000000   //nano seconds = 10^-9
+#define TS_THRESHOLD 1000000   //nano seconds = 10^-9
 
 
 const   bit<16> TYPE_IPV4 = 0x800;
@@ -127,6 +127,9 @@ control MyIngress(inout headers hdr,
     register<egressSpec_t>(1) mapped_port_reg;
     register<counter_register_type_t>(1) ntp_counter;
     register<counter_register_type_t>(1) amplification_attack;
+    register<timestamp_register_type_t>(1) old_ts_reg;
+    register<timestamp_register_type_t>(1) new_ts_reg;
+    register<timestamp_register_type_t>(1) diff_ts_reg;
     register<counter_register_type_t>(INSTANCE_COUNT) ntp_monlist_request_bytes_counter;
     register<counter_register_type_t>(INSTANCE_COUNT) ntp_monlist_response_bytes_counter;
     register<timestamp_register_type_t>(INSTANCE_COUNT) response_ts;
@@ -215,7 +218,7 @@ control MyIngress(inout headers hdr,
         size = 1;
         default_action = set_ntp_count();
     }
-    
+
     action set_spoof_register() {
         counter_register_type_t tmp;
         spoofed_pkts_reg.read(tmp, 0);
@@ -292,7 +295,7 @@ control MyIngress(inout headers hdr,
         size = 1;
         default_action = set_ntp_monlist_response_count();
     }
-    
+
     // Copy response timestamp to custom ntp metadata
     action get_response_TS() {
         instance_count_t hash_val;
@@ -301,6 +304,7 @@ control MyIngress(inout headers hdr,
         hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Get old timestamp
         response_ts.read(meta.old_ts, hash_val);
+        old_ts_reg.write(0,meta.old_ts);
     }
 
     table get_response_TS_table {
@@ -318,7 +322,10 @@ control MyIngress(inout headers hdr,
         // Function used to calculate a hash value and store it in hash_val
         hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
         // Update time stamp
+        response_ts.read(old_ts, hash_val); // debug
         response_ts.write(hash_val, standard_metadata.ingress_global_timestamp);
+        new_ts_reg.write(0, standard_metadata.ingress_global_timestamp); // debug
+        diff_ts_reg.write(0, standard_metadata.ingress_global_timestamp - old_ts); //debug
     }
 
     table set_response_TS_table {
