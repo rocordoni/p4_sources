@@ -57,7 +57,7 @@ def read_topo():
             links.append( (a, b) )
     return int(nb_hosts), int(nb_switches), links
 
-def send_random_traffic(dst):
+def send_random_traffic(dst, num_requests):
     NTP_MONLIST_REQUEST = "\x17\x00\x03\x2a" + "\x00" * 4
     #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x48" + "\x00" * 72
     dst_mac = None
@@ -101,7 +101,7 @@ def send_random_traffic(dst):
         print ("Invalid host to send to")
         sys.exit(1)
 
-    N = 10
+    N = int(num_requests)
     for i in range(N):
         # Choose random source IP
         random_number = random.randint(0,2)
@@ -131,8 +131,9 @@ def send_random_traffic(dst):
 if __name__ == '__main__':
 
     if len(sys.argv) < 2:
-        print("Usage: python send.py dst_host_name")
+        print("Usage: python send.py dst_host_name num_requests")
         sys.exit(1)
     else:
         dst_name = sys.argv[1]
-        send_random_traffic(dst_name)
+        num_requests = sys.argv[2]
+        send_random_traffic(dst_name, num_requests)
