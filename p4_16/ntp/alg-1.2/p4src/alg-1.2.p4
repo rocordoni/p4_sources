@@ -329,6 +329,23 @@ control MyIngress(inout headers hdr,
         default_action = set_response_TS();
     }
 
+    // Reset timestamp and bytes
+    action reset_bytes() {
+        instance_count_t hash_val;
+        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        // Reset values
+        ntp_monlist_request_bytes_counter.write(hash_val, 0);
+        ntp_monlist_response_bytes_counter.write(hash_val, 0);
+    }
+
+    table reset_bytes_table {
+        actions = {
+            reset_bytes;
+        }
+        size = 1;
+        default_action = reset_bytes();
+    }
+
     apply {
         /* Copy the port from switch_table to meta.mapped_port */
         mapped_port.apply();
@@ -348,7 +365,7 @@ control MyIngress(inout headers hdr,
                 get_response_TS_table.apply();
                 /* Set timestamp for current TS */
                 set_response_TS_table.apply();
-                // If new_timestamp - old_timestamp is lower than threshold: check for bytes 
+                // If new_timestamp - old_timestamp is lower than threshold: check for bytes
                 if (standard_metadata.ingress_global_timestamp - meta.old_ts < TS_THRESHOLD) {
                     // Check for Amplification attack
                     if (meta.response_bytes - meta.request_bytes > BYTES_THRESHOLD) {
@@ -356,6 +373,8 @@ control MyIngress(inout headers hdr,
                     }
                 } else {
                     // Two responses for same index came far apart from each other. This may not be an attack.
+                    // Reset timestamp and bytes
+                    reset_bytes_table.apply();
                 }
             }
             set_ntp_count_table.apply();
