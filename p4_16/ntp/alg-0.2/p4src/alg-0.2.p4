@@ -24,7 +24,7 @@
 #define REGISTER_WIDTH 16
 #define BYTES_THRESHOLD 100
 #define PACKETS_THRESHOLD 10
-#define TS_THRESHOLD 10000000000   //nano seconds = 10^-9
+#define TS_THRESHOLD 1000000   //nano seconds = 10^-9
 
 
 const   bit<16> TYPE_IPV4 = 0x800;
@@ -49,6 +49,7 @@ struct metadata {
     counter_register_type_t     message_count;
     bit<32>                     egress_port;
     timestamp_register_type_t   old_ts;
+    timestamp_register_type_t   curr_ts;
 }
 
 struct headers {
@@ -126,7 +127,7 @@ control MyIngress(inout headers hdr,
     register<counter_register_type_t>(1) ntp_counter;
     register<instance_count_t>(1) amplification_attack;
     register<counter_register_type_t>(INSTANCE_COUNT) message_counter;
-    register<counter_register_type_t>(INSTANCE_COUNT) teste;
+    register<timestamp_register_type_t>(INSTANCE_COUNT) response_ts;
 
     action drop() {
         mark_to_drop();
@@ -194,7 +195,7 @@ control MyIngress(inout headers hdr,
         size = 1;
         default_action = set_ntp_count();
     }
-    
+
     action set_amplification_attack_register() {
         amplification_attack.write(0, ATTACK);
     }
@@ -229,7 +230,7 @@ control MyIngress(inout headers hdr,
         size = 1;
         default_action = increment_message_count();
     }
-    
+
     // Increment count register of NTP response
     action decrement_message_count() {
         instance_count_t hash_val;
@@ -239,7 +240,6 @@ control MyIngress(inout headers hdr,
         message_counter.read(meta.message_count, hash_val);
         meta.message_count = meta.message_count - 1;
         message_counter.write(hash_val, meta.message_count);
-        teste.write(hash_val, meta.message_count);
     }
 
     table decrement_message_count_table {
@@ -249,7 +249,43 @@ control MyIngress(inout headers hdr,
         size = 1;
         default_action = decrement_message_count();
     }
-    
+
+    // Set response timestamp with the new value
+    action get_set_response_TS() {
+        instance_count_t hash_val;
+        // Function used to calculate a hash value and store it in hash_val
+        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        // Get and Update time stamp
+        meta.curr_ts = standard_metadata.ingress_global_timestamp;
+        response_ts.read(meta.old_ts, hash_val);
+        response_ts.write(hash_val, meta.curr_ts);
+    }
+
+    table get_set_response_TS_table {
+        actions = {
+            get_set_response_TS;
+        }
+        size = 1;
+        default_action = get_set_response_TS();
+    }
+
+    // Reset counters
+    action reset_counters() {
+        instance_count_t hash_val;
+        // Function used to calculate a hash value and store it in hash_val
+        hash(hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
+        message_counter.write(hash_val, 0);
+    }
+
+    table reset_counters_table {
+        actions = {
+            reset_counters;
+        }
+        size = 1;
+        default_action = reset_counters();
+    }
+
+
     apply {
         // NTP_GET_MONLIST operations and is a valid UDP header.
         if(hdr.ntp_mode7.req_code == NTP_GETMONLIST_CODE && hdr.udp.isValid()) {
@@ -257,13 +293,16 @@ control MyIngress(inout headers hdr,
                 // For a request, increment request counter
                 increment_message_count_table.apply();
             } else {
-                // For a response: increment response counter,
-                // copy req and resp counts to metadata, and
-                // check if the difference between them is above threshold
+                get_set_response_TS_table.apply();
                 decrement_message_count_table.apply();
-                if (meta.message_count < PACKETS_THRESHOLD) {
-                    // attack!
-                    amplification_attack_table.apply();
+                // If new_timestamp - old_timestamp is lower than threshold: check for messages
+                if (meta.curr_ts - meta.old_ts < TS_THRESHOLD) {
+                    if (meta.message_count < PACKETS_THRESHOLD) {
+                        // attack!
+                        amplification_attack_table.apply();
+                    }
+                } else {
+                    reset_counters_table.apply();
                 }
             }
             // NTP MONLIST Packet counter
