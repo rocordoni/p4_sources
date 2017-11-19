@@ -45,6 +45,7 @@ struct metadata {
     counter_register_type_t     request_bytes;
     counter_register_type_t     response_bytes;
     timestamp_register_type_t   old_ts;
+    timestamp_register_type_t   curr_ts;
 }
 
 struct headers {
@@ -121,8 +122,6 @@ control MyIngress(inout headers hdr,
 
     register<counter_register_type_t>(1) ntp_counter;
     register<counter_register_type_t>(1) amplification_attack;
-    register<timestamp_register_type_t>(1) old_ts_reg;
-    register<timestamp_register_type_t>(1) new_ts_reg;
     register<timestamp_register_type_t>(1) diff_ts_reg;
     register<counter_register_type_t>(INSTANCE_COUNT) ntp_monlist_request_bytes_counter;
     register<counter_register_type_t>(INSTANCE_COUNT) ntp_monlist_response_bytes_counter;
@@ -249,41 +248,25 @@ control MyIngress(inout headers hdr,
         default_action = set_ntp_monlist_response_count();
     }
 
-    // Copy response timestamp to custom ntp metadata
-    action get_response_TS() {
-        // Function used to calculate a hash value and store it in hash_val
-        hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
-        // Get old timestamp
-        response_ts.read(meta.old_ts, meta.hash_val);
-        old_ts_reg.write(0,meta.old_ts);
-    }
-
-    table get_response_TS_table {
-        actions = {
-            get_response_TS;
-        }
-        size = 1;
-        default_action = get_response_TS();
-    }
-
     // Set response timestamp with the new value
-    action set_response_TS() {
+    action get_set_response_TS() {
         // Function used to calculate a hash value and store it in hash_val
         hash(meta.hash_val, HashAlgorithm.crc32, MIN_HASH, { hdr.ipv4.dstAddr }, MAX_HASH);
-        // Update time stamp
-        response_ts.read(meta.old_ts, meta.hash_val); // debug
-        response_ts.write(meta.hash_val, standard_metadata.ingress_global_timestamp);
-        new_ts_reg.write(0, standard_metadata.ingress_global_timestamp); // debug
-        diff_ts_reg.write(0, standard_metadata.ingress_global_timestamp - meta.old_ts); //debug
+        // Get and Update time stamp
+        meta.curr_ts = standard_metadata.ingress_global_timestamp;
+        response_ts.read(meta.old_ts, meta.hash_val);
+        response_ts.write(meta.hash_val, meta.curr_ts);
+        diff_ts_reg.write(0, meta.curr_ts - meta.old_ts); //debug
     }
 
-    table set_response_TS_table {
+    table get_set_response_TS_table {
         actions = {
-            set_response_TS;
+            get_set_response_TS;
         }
         size = 1;
-        default_action = set_response_TS();
+        default_action = get_set_response_TS();
     }
+
 
     // Reset timestamp and bytes
     action reset_bytes() {
@@ -310,12 +293,9 @@ control MyIngress(inout headers hdr,
             } else if (hdr.ntp_first.r == NTP_RESPONSE) {
                 /* Update response bytes and copy bytes registers to metadata */
                 set_ntp_monlist_response_count_table.apply();
-                /* Put last timestamp in metadata.response_ts */
-                get_response_TS_table.apply();
-                /* Set timestamp for current TS */
-                set_response_TS_table.apply();
+                get_set_response_TS_table.apply();
                 // If new_timestamp - old_timestamp is lower than threshold: check for bytes
-                if (standard_metadata.ingress_global_timestamp - meta.old_ts < TS_THRESHOLD) {
+                if (meta.curr_ts - meta.old_ts < TS_THRESHOLD) {
                     // Check for Amplification attack
                     if (meta.response_bytes - meta.request_bytes > BYTES_THRESHOLD) {
                         amplification_attack_table.apply();

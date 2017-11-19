@@ -21,12 +21,8 @@ source /home/rocordoni/Documents/2017-1_TCC/tutorials/env.sh
 
 CLI_PATH=$BMV2_PATH/targets/simple_switch/sswitch_CLI
 echo "displaying registers"
-echo "register_read hash_reg 0" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep hash_reg
 echo "register_read amplification_attack 0" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep amplification_attack
 echo "register_read ntp_counter 0" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep ntp_counter
-echo "register_read spoofed_pkts_reg 0" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep spoofed_pkts_reg
-echo "register_read old_ts_reg 0" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep old_ts_reg
-echo "register_read new_ts_reg 0" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep new_ts_reg
 echo "register_read diff_ts_reg 0" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep diff_ts_reg
 for i in $(seq 0 15); do
     echo "register_read ntp_monlist_request_bytes_counter $i" | $CLI_PATH build/p4src/alg-1.2.p4.json | grep ntp_monlist_request_bytes_counter
