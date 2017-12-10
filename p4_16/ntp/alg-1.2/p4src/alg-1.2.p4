@@ -355,6 +355,10 @@ control MyDeparser(packet_out packet, in headers hdr) {
     apply {
         packet.emit(hdr.ethernet);
         packet.emit(hdr.ipv4);
+        packet.emit(hdr.udp);
+        packet.emit(hdr.ntp_first);
+        packet.emit(hdr.ntp_mode7);
+        packet.emit(hdr.ntp_mode7_data);
     }
 }
 
