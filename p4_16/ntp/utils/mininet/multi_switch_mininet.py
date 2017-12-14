@@ -163,6 +163,12 @@ def main():
             print message_file.read()
 
     if args.cli or ('cli' in conf and conf['cli']):
+        #for host in net.hosts:
+            #h = host.name.split('h')[1]
+            #int_h = int(h)
+            #cmd = 'python send_ntp_response.py 1 %s 1 %s 1 0 &' % (str(int_h-1),str(int_h-1))
+            #print cmd
+            #info(host.cmd(cmd))
         CLI(net)
 
     stdout_files = dict()
