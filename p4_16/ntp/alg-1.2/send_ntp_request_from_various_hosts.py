@@ -3,7 +3,7 @@
 from scapy.all import Ether, IP, sendp, get_if_hwaddr, get_if_list, TCP, Raw, UDP, NTP, fuzz
 import sys
 import time
-import random, string
+import string
 import socket
 import fcntl
 import struct
@@ -27,46 +27,52 @@ def get_ip_address(ifname):
         struct.pack('256s', ifname[:15])
     )[20:24])
 
+def read_topo():
+    nb_hosts = 0
+    nb_switches = 0
+    links = []
+    with open("topo.txt", "r") as f:
+        line = f.readline()[:-1]
+        w, nb_switches = line.split()
+        assert(w == "switches")
+        line = f.readline()[:-1]
+        w, nb_hosts = line.split()
+        assert(w == "hosts")
+        for line in f:
+            if not f: break
+            a, b = line.split()
+            links.append( (a, b) )
+    return int(nb_hosts), int(nb_switches), links
+
 def send_random_traffic(src_switch, src_host, dst_switch, dst_host, timeout, loop):
-    NTP_ITEMS = "\x06"
-    NTP_ITEMS_INT = 6
-    NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" + NTP_ITEMS + "\x00\x48" + "\x00" * 72 * NTP_ITEMS_INT
-    
-    src_host_in_hex = '{:02x}'.format(int(src_host))
-    dst_host_in_hex = '{:02x}'.format(int(dst_host))
-    src_mac = '00:00:00:00:0' + src_switch + ':' + src_host_in_hex
+    NTP_MONLIST_REQUEST = "\x17\x00\x03\x2a" + "\x00" * 8
+
+    src_mac = '00:00:00:00:0' + src_switch + ':0' + src_host
     src_ip  = '10.0.' + src_switch + '.' + src_host
-    dst_mac = '00:00:00:00:0' + dst_switch + ':' + dst_host_in_hex
+    dst_mac = '00:00:00:00:0' + dst_switch + ':0' + dst_host
     dst_ip  = '10.0.' + dst_switch + '.' + dst_host
-    
-    print 'From:\n  ' + src_mac
-    print '  ' + src_ip
-    print 'To:\n  ' + dst_mac
-    print '  ' + dst_ip
+
     # Get name of eth0 interface
     iface_eth0 = ''
     for i in get_if_list():
         if 'eth0' in i or 's0' in i:
             iface_eth0 = i
-
+    
+    hosts = [str(i) for i in range(1,10)]
+    print hosts
+    # send requests
     while True:
-        # Send with 20 packages with 6 items each = 60 items * 72 bytes = 4320 data bytes
-        p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
-        p = p/UDP(dport=123,sport=123)/Raw(NTP_MONLIST_RESPONSE)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
-        time.sleep(timeout)
+        for i in hosts:
+            src_host = i
+            src_mac = '00:00:00:00:0' + src_switch + ':0' + src_host
+            src_ip  = '10.0.' + src_switch + '.' + src_host
+            p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
+            p = p/UDP(dport=123,sport=123)/Raw(NTP_MONLIST_REQUEST)
+            sendp(p, iface = iface_eth0, loop=loop, verbose=0)
+            #time.sleep(timeout)
 
 if __name__ == '__main__':
-    if len(sys.argv) < 6:
+    if len(sys.argv) < 3:
         print("Usage: python send.py src_switch src_host dst_switch dst_host time [loop]<0|1>")
         sys.exit(1)
     else:

