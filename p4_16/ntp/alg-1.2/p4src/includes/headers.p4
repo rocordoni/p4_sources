@@ -69,6 +69,10 @@ header ntp_mode7_t {
     bit<12> size_data_item;
 }
 
+header ntp_mode7_data_t {
+    varbit<32> data;
+}
+
 //header_type dns_t {
     //fields {
         //id              : 16;

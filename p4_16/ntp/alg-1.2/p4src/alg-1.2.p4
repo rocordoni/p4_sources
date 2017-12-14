@@ -14,29 +14,26 @@
 #define IP_PROTOCOLS_TCP 6
 #define IP_PROTOCOLS_UDP 17
 #define NTP_MODE7 7
-#define NTP_REQUEST_DATA_BYTES 72 //0x48
+#define NTP_REQUEST_DATA_BYTES 8
 #define MONLIST_ATTACK_THRESHOLD 0
 #define NTP_GETMONLIST_CODE 0x2a
 #define NTP_REQUEST 0
 #define NTP_RESPONSE 1
 #define ATTACK 1
-#define REGISTER_COUNT 16
-#define REGISTER_WIDTH 16
-#define BYTES_THRESHOLD 100
-#define TS_THRESHOLD 1000000   //micro seconds = 10^-6
+#define BYTES_THRESHOLD 50000
+#define TS_THRESHOLD 1000000 // micro seconds = 10^-6
 
 
 const   bit<16> TYPE_IPV4 = 0x800;
-//const   bit<10> INSTANCE_COUNT = 16;
 
 /*** NAO ESQUECER DE MUDAR OS DOIS INSTACE_COUNT ****/
-#define INSTANCE_COUNT 16
+#define INSTANCE_COUNT 2
 #define MIN_HASH 5w0
-#define MAX_HASH 5w16
+#define MAX_HASH 5w2
 typedef bit<32>  instance_count_t;
 typedef bit<9>  egressSpec_t;
 typedef bit<16> register_type_t;
-typedef bit<16> counter_register_type_t;
+typedef bit<32> counter_register_type_t;
 typedef bit<48> timestamp_register_type_t;
 
 struct metadata {
@@ -44,8 +41,10 @@ struct metadata {
     instance_count_t            hash_val;
     counter_register_type_t     request_bytes;
     counter_register_type_t     response_bytes;
+    counter_register_type_t     curr_num_attacks;
     timestamp_register_type_t   old_ts;
     timestamp_register_type_t   curr_ts;
+    timestamp_register_type_t   attack_timestamp;
 }
 
 struct headers {
@@ -54,6 +53,7 @@ struct headers {
     udp_t       udp;
     ntp_first_t ntp_first;
     ntp_mode7_t ntp_mode7;
+    ntp_mode7_data_t ntp_mode7_data;
 }
 
 /*************************************************************************
@@ -100,6 +100,11 @@ parser MyParser(packet_in packet,
 
     state parse_ntp_mode7 {
         packet.extract(hdr.ntp_mode7);
+        transition parse_ntp_mode7_data;
+    }
+
+    state parse_ntp_mode7_data {
+        packet.extract(hdr.ntp_mode7_data, (bit<32>)(hdr.ntp_mode7.n_data_items * hdr.ntp_mode7.size_data_item));
         transition accept;
     }
 
@@ -121,7 +126,8 @@ control MyIngress(inout headers hdr,
                   inout standard_metadata_t standard_metadata) {
 
     register<counter_register_type_t>(1) ntp_counter;
-    register<counter_register_type_t>(1) amplification_attack;
+    register<counter_register_type_t>(INSTANCE_COUNT) amplification_attack;
+    register<timestamp_register_type_t>(INSTANCE_COUNT) amplification_attack_timestamp;
     register<timestamp_register_type_t>(1) diff_ts_reg;
     register<counter_register_type_t>(INSTANCE_COUNT) ntp_monlist_request_bytes_counter;
     register<counter_register_type_t>(INSTANCE_COUNT) ntp_monlist_response_bytes_counter;
@@ -129,13 +135,6 @@ control MyIngress(inout headers hdr,
 
     action drop() {
         mark_to_drop();
-    }
-
-    action set_nhop(bit<48> nhop_dmac, bit<32> nhop_ipv4, bit<9> port) {
-        hdr.ethernet.dstAddr = nhop_dmac;
-        hdr.ipv4.dstAddr = nhop_ipv4;
-        standard_metadata.egress_spec = port;
-        hdr.ipv4.ttl = hdr.ipv4.ttl - 1;
     }
 
     action ipv4_forward(macAddr_t dstAddr, egressSpec_t port) {
@@ -158,24 +157,6 @@ control MyIngress(inout headers hdr,
         default_action = NoAction();
     }
 
-    action set_dmac(macAddr_t dmac) {
-        hdr.ethernet.dstAddr = dmac;
-    }
-
-    table forward {
-        key = {
-            meta.nhop_ipv4 : exact;
-        }
-        actions = {
-            set_dmac;
-            drop;
-            NoAction;
-        }
-        size = 512;
-        default_action = NoAction();
-    }
-
-
 // ******************** NTP ACTION ***********************
 
     // Increment count register of ntp packets
@@ -195,7 +176,15 @@ control MyIngress(inout headers hdr,
     }
 
     action set_amplification_attack_register() {
-        amplification_attack.write(0, ATTACK);
+        amplification_attack.read(meta.curr_num_attacks, meta.hash_val);
+        amplification_attack_timestamp.read(meta.attack_timestamp, meta.hash_val);
+        meta.curr_num_attacks = meta.curr_num_attacks + 1;
+        meta.attack_timestamp = standard_metadata.ingress_global_timestamp;
+
+        amplification_attack.write(meta.hash_val, meta.curr_num_attacks);
+        amplification_attack_timestamp.write(meta.hash_val, meta.attack_timestamp);
+        ntp_monlist_request_bytes_counter.write(meta.hash_val, 0);
+        ntp_monlist_response_bytes_counter.write(meta.hash_val, 0);
     }
 
     // Table that sets a register indicating that an amplification attack ocurred
@@ -236,7 +225,7 @@ control MyIngress(inout headers hdr,
         // Copy value from register ntp_monlist_response_bytes_counter[hash_val]
         ntp_monlist_response_bytes_counter.read(meta.response_bytes, meta.hash_val);
         // Increment and write it back to register
-        meta.response_bytes = meta.response_bytes + (bit<16>)(hdr.ntp_mode7.n_data_items * hdr.ntp_mode7.size_data_item);
+        meta.response_bytes = meta.response_bytes + (counter_register_type_t)(hdr.ntp_mode7.n_data_items * hdr.ntp_mode7.size_data_item);
         ntp_monlist_response_bytes_counter.write(meta.hash_val, meta.response_bytes);
     }
 
@@ -294,22 +283,21 @@ control MyIngress(inout headers hdr,
                 /* Update response bytes and copy bytes registers to metadata */
                 set_ntp_monlist_response_count_table.apply();
                 get_set_response_TS_table.apply();
-                // If new_timestamp - old_timestamp is lower than threshold: check for bytes
+                /* If new_timestamp - old_timestamp is lower than threshold: check for bytes */
                 if (meta.curr_ts - meta.old_ts < TS_THRESHOLD) {
-                    // Check for Amplification attack
+                    /* Check for Amplification attack */
                     if (meta.response_bytes - meta.request_bytes > BYTES_THRESHOLD) {
                         amplification_attack_table.apply();
                     }
                 } else {
-                    // Two responses for same index came far apart from each other. This may not be an attack.
-                    // Reset timestamp and bytes
+                    /* Two responses for same index came far apart from each other. This may not be an attack.
+                       Reset timestamp and bytes */
                     reset_bytes_table.apply();
                 }
             }
             set_ntp_count_table.apply();
         }
         ipv4_lpm.apply();
-        forward.apply();
     }
 }
 
