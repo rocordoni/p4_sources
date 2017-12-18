@@ -169,6 +169,17 @@ control MyIngress(inout headers hdr,
         default_action = NoAction();
     }
 
+    table show_dst_addr_in_log {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
+        actions = {
+            NoAction;
+        }
+        size = 1;
+        default_action = NoAction();
+    }
+
 // ******************** NTP ACTION ***********************
 
     // Increment count register of ntp packets
@@ -310,6 +321,7 @@ control MyIngress(inout headers hdr,
                 set_ntp_monlist_request_count_table.apply();
                 set_ntp_request_count_table.apply();
             } else if (hdr.ntp_first.r == NTP_RESPONSE) {
+                show_dst_addr_in_log.apply();
                 /* Update response bytes and copy bytes registers to metadata */
                 set_ntp_monlist_response_count_table.apply();
                 get_set_response_TS_table.apply();
