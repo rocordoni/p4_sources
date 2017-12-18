@@ -42,6 +42,7 @@ class Th(Thread):
         # verbose = 0 -> no verbose
         while keep_going == True:
             timeout = random.randrange(0,5)
+            time.sleep(float(timeout))
             sendp(p, iface = iface_eth0, loop=0, verbose=1)
             time.sleep(float(timeout))
         
@@ -77,5 +78,5 @@ if __name__ == '__main__':
             thread = Th(i, '1', str(i), '1', '9')
             thread.start()
             # Run threads for X seconds
-            time.sleep(10)
+            time.sleep(30)
             keep_going = False
