@@ -7,6 +7,7 @@ import string
 import socket
 import fcntl
 import struct
+import random
 
 def randomword(max_length):
     length = random.randint(1, max_length)
@@ -59,9 +60,11 @@ def send_random_traffic(src_switch, src_host, dst_switch, dst_host, timeout, loo
             iface_eth0 = i
 
     while True:
+        timeout = random.randrange(0,5)
+        #print 'timeout ' + str(timeout)
         p = Ether(dst=dst_mac,src=src_mac)/IP(dst=dst_ip,src=src_ip)
         p = p/UDP(dport=123,sport=123)/Raw(NTP_MONLIST_REQUEST)
-        sendp(p, iface = iface_eth0, loop=loop, verbose=0)
+        sendp(p, iface = iface_eth0, loop=loop, verbose=1)
         time.sleep(timeout)
 
 if __name__ == '__main__':
