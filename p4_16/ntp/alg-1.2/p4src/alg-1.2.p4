@@ -21,15 +21,15 @@
 #define NTP_RESPONSE 1
 #define ATTACK 1
 #define BYTES_THRESHOLD 50000
-#define TS_THRESHOLD 1000000 // micro seconds = 10^-6
+#define TS_THRESHOLD 2000000 // micro seconds = 10^-6
 
 
 const   bit<16> TYPE_IPV4 = 0x800;
 
 /*** NAO ESQUECER DE MUDAR OS DOIS INSTACE_COUNT ****/
-#define INSTANCE_COUNT 2
+#define INSTANCE_COUNT 4
 #define MIN_HASH 5w0
-#define MAX_HASH 5w2
+#define MAX_HASH 5w4
 typedef bit<32>  instance_count_t;
 typedef bit<9>  egressSpec_t;
 typedef bit<16> register_type_t;
@@ -126,6 +126,7 @@ control MyIngress(inout headers hdr,
                   inout standard_metadata_t standard_metadata) {
 
     register<counter_register_type_t>(1) ntp_counter;
+    register<counter_register_type_t>(INSTANCE_COUNT) ntp_counter_requests;
     register<counter_register_type_t>(INSTANCE_COUNT) amplification_attack;
     register<timestamp_register_type_t>(INSTANCE_COUNT) amplification_attack_timestamp;
     register<timestamp_register_type_t>(1) diff_ts_reg;
@@ -157,6 +158,17 @@ control MyIngress(inout headers hdr,
         default_action = NoAction();
     }
 
+    table show_src_addr_in_log {
+        key = {
+            hdr.ipv4.srcAddr: lpm;
+        }
+        actions = {
+            NoAction;
+        }
+        size = 1;
+        default_action = NoAction();
+    }
+
 // ******************** NTP ACTION ***********************
 
     // Increment count register of ntp packets
@@ -173,6 +185,22 @@ control MyIngress(inout headers hdr,
         }
         size = 1;
         default_action = set_ntp_count();
+    }
+
+    // Increment count register of ntp request packets
+    action set_ntp_request_count() {
+        counter_register_type_t tmp;
+        ntp_counter_requests.read(tmp, meta.hash_val);
+        tmp = tmp + 1;
+        ntp_counter_requests.write(meta.hash_val, tmp);
+    }
+
+    table set_ntp_request_count_table {
+        actions = {
+            set_ntp_request_count;
+        }
+        size = 1;
+        default_action = set_ntp_request_count();
     }
 
     action set_amplification_attack_register() {
@@ -277,8 +305,10 @@ control MyIngress(inout headers hdr,
         /* NTP_GET_MONLIST operations and valid UDP header */
         if(hdr.ntp_mode7.req_code == NTP_GETMONLIST_CODE && hdr.udp.isValid()) {
             if (hdr.ntp_first.r == NTP_REQUEST) {
+                show_src_addr_in_log.apply();
                 /* Update request bytes and copy bytes registers to metadata */
                 set_ntp_monlist_request_count_table.apply();
+                set_ntp_request_count_table.apply();
             } else if (hdr.ntp_first.r == NTP_RESPONSE) {
                 /* Update response bytes and copy bytes registers to metadata */
                 set_ntp_monlist_response_count_table.apply();
