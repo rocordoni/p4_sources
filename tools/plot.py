@@ -113,7 +113,13 @@ if __name__ == '__main__':
             for k,v in responses.iteritems():
                 tmp = [(i, k[-1]) for i in v]
                 list_of_tuples += tmp
-            plt.scatter(*zip(*list_of_tuples), marker="s")
+            attacks = get_attacks(filename)
+            list_of_tuples2 = []
+            for k,v in attacks.iteritems():
+                tmp = [(i, k[-1]) for i in v]
+                list_of_tuples2 += tmp
+            plt.scatter(*zip(*list_of_tuples), marker="s", color='black')
+            plt.scatter(*zip(*list_of_tuples2), marker='v', color='red')
             plt.ylabel('some numbers')
             plt.connect('button_press_event', on_click)
             plt.show()
