@@ -228,6 +228,9 @@ control MyIngress(inout headers hdr,
 
     // Table that sets a register indicating that an amplification attack ocurred
     table amplification_attack_table {
+        key = {
+            hdr.ipv4.dstAddr: lpm;
+        }
         actions = {
             set_amplification_attack_register;
         }
