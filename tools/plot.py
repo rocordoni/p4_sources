@@ -18,15 +18,15 @@ def get_attacks(filename):
     with open(filename, 'r') as f2:
         regex = re.compile(r"Applying table \'amplification_attack_table\'\n\[(\d+:\d+:\d+\.\d+)\].+?ipv4\.\w+\s+:\s+(\w+)", re.DOTALL)
         #regex = re.compile(r"^(\*\s+ipv4\.dstAddr\s+:\s+.*?1)", re.DOTALL)
-        m = regex.search(f2.read())
-        if m:
-            attack_time = datetime.strptime(m.group(1).strip(), '%H:%M:%S.%f')
-            t = attack_time - t0
-            host = m.group(2)
-            host = 'h' + host[-1]
-            if host not in attacks.keys():
-                attacks[host] = []
-            attacks[host].append(t.total_seconds())
+        for m in regex.finditer(f2.read()):
+            if m:
+                attack_time = datetime.strptime(m.group(1).strip(), '%H:%M:%S.%f')
+                t = attack_time - t0
+                host = m.group(2)
+                host = 'h' + host[-1]
+                if host not in attacks.keys():
+                    attacks[host] = []
+                attacks[host].append(t.total_seconds())
     return attacks
 
 def on_click(event):
@@ -78,7 +78,8 @@ if __name__ == '__main__':
                 tmp = [(i, k[-1]) for i in v]
                 list_of_tuples2 += tmp
             plt.scatter(*zip(*list_of_tuples), marker="s", color='black')
-            plt.scatter(*zip(*list_of_tuples2), marker='v', color='red')
+            if list_of_tuples2:
+                plt.scatter(*zip(*list_of_tuples2), marker='v', color='red')
             plt.ylabel('Hosts')
             plt.xlabel('Tempo')
             plt.connect('button_press_event', on_click)
